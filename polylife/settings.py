@@ -46,6 +46,9 @@ INSTALLED_APPS = [
 
     # Local apps
     "core",
+
+    # Team microservices (empty until teams are implemented)
+    *TEAM_APPS,
 ]
 
 MIDDLEWARE = [
@@ -83,12 +86,26 @@ ASGI_APPLICATION = "polylife.asgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+#
+# The core (and Django's built-in apps) live in "default". Each team gets its
+# own database, isolated from the others. A team's DB connection comes from
+# `<TEAM>_DATABASE_URL` (e.g. TEAM1_DATABASE_URL), carrying that team's unique
+# credentials in production; locally it falls back to a per-team SQLite file.
 DATABASES = {
     "default": env.db(
         "DATABASE_URL",
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
     ),
 }
+
+for _team in TEAM_APPS:
+    DATABASES[_team] = env.db(
+        f"{_team.upper()}_DATABASE_URL",
+        default=f"sqlite:///{BASE_DIR / f'{_team}.sqlite3'}",
+    )
+
+# Route each team app's models to that team's own database.
+DATABASE_ROUTERS = ["core.db_router.TeamPerAppRouter"]
 
 
 # Password validation
