@@ -23,8 +23,13 @@ export default function Register() {
   ];
 
   const checkPasswordStrength = (pass) => {
-    let strength = 0;
-    if (pass.length >= 8) strength++;        // backend: minimum length is 8
+    // The 8-char minimum is a hard requirement (matches the backend), so a
+    // shorter password is always "weak" — never shows as strong.
+    if (pass.length < 8) {
+      setPasswordStrength(pass.length === 0 ? 0 : 1);
+      return;
+    }
+    let strength = 1; // meets the minimum length
     if (pass.match(/[a-z]/) && pass.match(/[A-Z]/)) strength++;
     if (pass.match(/[0-9]/)) strength++;
     if (pass.match(/[^a-zA-Z0-9]/)) strength++;
