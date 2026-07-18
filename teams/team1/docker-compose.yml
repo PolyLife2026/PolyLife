@@ -15,25 +15,25 @@ services:
     environment:
       - CORE_BASE_URL=${CORE_BASE_URL}  # from .env
     networks: [polylife]
-    # depends_on: [backend]
+    depends_on: [backend]
 
   # --- Your service (uncomment when ready) ---------------------------------
-  # backend:
-  #   build: .                          # builds this team's Django app
-  #   env_file: .env                    # DB creds & secret key come from .env
-  #   networks: [polylife, team]
-  #
-  # db:
-  #   image: postgres:16-alpine
-  #   env_file: .env                    # POSTGRES_DB/USER/PASSWORD from .env
-  #   volumes: [db-data:/var/lib/postgresql/data]
-  #   networks: [team]
+  backend:
+    build: .                          # builds this team's Django app
+    env_file: .env                    # DB creds & secret key come from .env
+    networks: [polylife, team]
+  
+  db:
+    image: postgres:16-alpine
+    env_file: .env                    # POSTGRES_DB/USER/PASSWORD from .env
+    volumes: [db-data:/var/lib/postgresql/data]
+    networks: [team]
 
-# volumes:
-#   db-data:
+volumes:
+  db-data:
 
 networks:
   polylife:                             # shared with the core (gateway <-> core)
     external: true
     name: polylife_net
-  # team:                               # private app <-> db (uncomment with db)
+  team:                               # private app <-> db (uncomment with db)
