@@ -22,6 +22,8 @@ services:
     build: .                          # builds this team's Django app
     env_file: .env                    # DB creds & secret key come from .env
     networks: [polylife, team]
+    volumes:                     
+      - .:/app
   
   db:
     image: postgres:16-alpine

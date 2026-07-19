@@ -23,4 +23,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["gunicorn", "PolyLife.wsgi:application", "-b", "0.0.0.0:8000"]
+CMD ["gunicorn", "config.wsgi:application", "-b", "0.0.0.0:8000"]
