@@ -2,6 +2,7 @@ from django.db import models
 from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+#from ..views.challenge_views import ChallengeCreateView
 
 
 # Your team's data models go here. They live in YOUR database (the core's
