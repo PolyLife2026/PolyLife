@@ -33,7 +33,6 @@ class Challenge(models.Model):
         SWIMMING = "swimming", "Swimming"
         CYCLING = "cycling", "Cycling"
         WALKING = "walking", "Walking"
-        # add whatever set your team agrees on
 
     class GoalUnit(models.TextChoices):
         KM = "km", "Kilometers"
@@ -61,14 +60,6 @@ class Challenge(models.Model):
     class Meta:
         db_table = 'challenge'
         ordering = ["-created_at"]
-
-    def clean(self):
-        if self.date_start and self.date_end and self.date_end <= self.date_start:
-            raise ValidationError("date_end must be after date_start.")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title

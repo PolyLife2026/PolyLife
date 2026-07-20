@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 environ.Env.read_env(BASE_DIR / ".env")
 
-SECRET_KEY = env("SECRET_KEY", default="dev-secret-change-me")
+SECRET_KEY = env("DJANGO_SECRET_KEY", default="dev-secret-change-me")
 DEBUG = env.bool("DEBUG", default=True)
 ALLOWED_HOSTS = ["*"]  # gateway/nginx sits in front; fine for this project's scope
 
