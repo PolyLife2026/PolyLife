@@ -61,6 +61,7 @@ class Challenge(models.Model):
     class Meta:
         db_table = 'challenge'
         ordering = ["-created_at"]
+        app_label = 'team1'
 
     def __str__(self):
         return self.title
