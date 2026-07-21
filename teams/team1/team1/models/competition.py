@@ -3,14 +3,6 @@ from django.core.exceptions import ValidationError
 
 
 class Competition(models.Model):
-    """
-    SCRUM-122: Design and implement Competition model.
-
-    A coach/admin-defined competition (e.g. weight-loss, activity-based,
-    or record-based). Distinct from Challenge: a Competition tracks
-    participants' recorded results (SCRUM-131) and produces a ranked
-    leaderboard (SCRUM-135) and final rankings (SCRUM-139) once it ends.
-    """
 
     class CompetitionType(models.TextChoices):
         WEIGHT_LOSS = "weight_loss", "Weight loss"
@@ -25,25 +17,24 @@ class Competition(models.Model):
     competition_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=100)
     description = models.TextField(max_length=1000, blank=True, null=True)
-
-    # Explicitly requested by SCRUM-122: free-text rules shown to
-    # participants before they join (scoring rules, fair-play rules, etc).
     rules = models.TextField(max_length=2000, blank=True, null=True)
 
     competition_type = models.CharField(
-        max_length=30, choices=CompetitionType.choices, db_index=True
+        max_length=30,
+        choices=CompetitionType.choices,
+        db_index=True
     )
 
     date_start = models.DateTimeField()
     date_end = models.DateTimeField()
 
     status = models.CharField(
-        max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True
     )
 
-    # Owner of this record (coach/admin). Not a FK: the User table is owned
-    # by the Core service, in a different database than this microservice's
-    # (same convention as Challenge.created_by).
     created_by = models.BigIntegerField(db_index=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -61,3 +52,33 @@ class Competition(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class CompetitionParticipant(models.Model):
+
+    participant_id = models.AutoField(primary_key=True)
+
+    competition = models.ForeignKey(
+        Competition,
+        on_delete=models.CASCADE,
+        related_name="participants"
+    )
+
+    # User table belongs to Core service
+    user_id = models.BigIntegerField(db_index=True)
+
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "competition_participant"
+        ordering = ["-joined_at"]
+        app_label = "team1"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["competition", "user_id"],
+                name="unique_competition_user"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} -> {self.competition.title}"

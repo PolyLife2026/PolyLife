@@ -3,7 +3,8 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
-
+from .models import CompetitionParticipant
+from datetime import timedelta
 from .models import ParticipantScore
 from .models import Activity, Challenge, Competition
 
@@ -607,3 +608,73 @@ class ChallengeSoftDeleteTests(APITestCase):
         # Verify the challenge is NOT soft-deleted
         self.started_challenge.refresh_from_db()
         self.assertFalse(self.started_challenge.is_deleted)
+class CompetitionJoinAPITest(APITestCase):
+    """
+    SCRUM-27:
+    Test joining a competition.
+    """
+
+    def setUp(self):
+        self.competition = Competition.objects.create(
+            title="Summer Competition",
+            description="Test Competition",
+            rules="Test Rules",
+            competition_type=Competition.CompetitionType.WEIGHT_LOSS,
+            date_start=timezone.now() + timedelta(days=1),
+            date_end=timezone.now() + timedelta(days=10),
+            status=Competition.Status.PENDING,
+            created_by=1,
+        )
+
+    def test_join_success(self):
+        response = self.client.post(
+            f"/team1/api/competitions/{self.competition.competition_id}/join/",
+            HTTP_X_USER_ID="100",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(
+            CompetitionParticipant.objects.filter(
+                competition=self.competition,
+                user_id=100,
+            ).exists()
+        )
+
+    def test_duplicate_join(self):
+        CompetitionParticipant.objects.create(
+            competition=self.competition,
+            user_id=100,
+        )
+
+        response = self.client.post(
+            f"/team1/api/competitions/{self.competition.competition_id}/join/",
+            HTTP_X_USER_ID="100",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    def test_closed_competition(self):
+        self.competition.status = Competition.Status.ACTIVE
+        self.competition.save()
+
+        response = self.client.post(
+            f"/team1/api/competitions/{self.competition.competition_id}/join/",
+            HTTP_X_USER_ID="100",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_missing_user_header(self):
+        response = self.client.post(
+            f"/team1/api/competitions/{self.competition.competition_id}/join/"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_competition_not_found(self):
+        response = self.client.post(
+            "/team1/api/competitions/99999/join/",
+            HTTP_X_USER_ID="100",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

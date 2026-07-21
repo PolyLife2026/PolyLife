@@ -1,6 +1,7 @@
-from .competition import Competition
-from .challenge import Challenge
 from .activity import Activity
+from .challenge import Challenge
+from .competition import Competition, CompetitionParticipant
 from .participant_score import ParticipantScore
-#from .activity import Activity, Leaderboard
-#from .competition import ParticipantCompetition, Badge, BadgeUser
+
+# from .activity import Activity, Leaderboard
+# from .competition import ParticipantCompetition, Badge, BadgeUser
