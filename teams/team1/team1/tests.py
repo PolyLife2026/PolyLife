@@ -282,3 +282,118 @@ class CompetitionCreateAPITest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Competition.objects.count(), 0)
+
+class ActivityUpdateTests(APITestCase):
+    """
+    SCRUM-19:
+    Tests updating an activity:
+      - owner can edit on the same day
+      - another user cannot edit the activity
+      - editing an activity from a previous day is rejected
+    """
+
+    def setUp(self):
+        self.url = lambda activity_id: reverse(
+            "team1:activity-update",
+            kwargs={"activity_id": activity_id},
+        )
+
+        now = timezone.now()
+
+        self.challenge = Challenge.objects.create(
+            title="Running Challenge",
+            activity_type=Challenge.ActivityType.RUNNING,
+            difficulty=Challenge.Difficulty.MEDIUM,
+            value_goal=100,
+            goal_unit=Challenge.GoalUnit.KM,
+            date_start=now - timedelta(days=1),
+            date_end=now + timedelta(days=10),
+            status=Challenge.Status.ACTIVE,
+            created_by=1,
+        )
+
+        self.today_activity = Activity.objects.create(
+            user_id=42,
+            challenge=self.challenge,
+            value="5.00",
+            activity_date=timezone.localdate(),
+            note="Morning Run",
+        )
+
+        self.old_activity = Activity.objects.create(
+            user_id=42,
+            challenge=self.challenge,
+            value="8.00",
+            activity_date=timezone.localdate() - timedelta(days=1),
+            note="Yesterday Run",
+        )
+
+    def _patch(self, activity_id, data, user_id="42"):
+        headers = {}
+
+        if user_id is not None:
+            headers["HTTP_X_USER_ID"] = user_id
+
+        return self.client.patch(
+            self.url(activity_id),
+            data=data,
+            format="json",
+            **headers
+        )
+
+    # ---------- happy path ----------
+
+    def test_owner_can_update_activity_on_same_day(self):
+        response = self._patch(
+            self.today_activity.activity_id,
+            {
+                "challenge": self.challenge.challenge_id,
+                "value": "10.50",
+                "activity_date": timezone.localdate().isoformat(),
+                "note": "Updated Run",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.today_activity.refresh_from_db()
+
+        self.assertEqual(str(self.today_activity.value), "10.50")
+        self.assertEqual(self.today_activity.note, "Updated Run")
+
+    # ---------- wrong owner ----------
+
+    def test_other_user_cannot_update_activity(self):
+        response = self._patch(
+            self.today_activity.activity_id,
+            {
+                "challenge": self.challenge.challenge_id,
+                "value": "12",
+                "activity_date": timezone.localdate().isoformat(),
+            },
+            user_id="999",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.today_activity.refresh_from_db()
+
+        self.assertEqual(str(self.today_activity.value), "5.00")
+
+    # ---------- previous day ----------
+
+    def test_previous_day_activity_cannot_be_updated(self):
+        response = self._patch(
+            self.old_activity.activity_id,
+            {
+                "challenge": self.challenge.challenge_id,
+                "value": "15",
+                "activity_date": self.old_activity.activity_date.isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.old_activity.refresh_from_db()
+
+        self.assertEqual(str(self.old_activity.value), "8.00")

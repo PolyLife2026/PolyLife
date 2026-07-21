@@ -1,5 +1,6 @@
+from django.utils import timezone
 from rest_framework import generics
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from ..models import Activity
 from ..serializers.activity import ActivitySerializer
@@ -31,3 +32,37 @@ class ActivityCreateView(generics.CreateAPIView):
             raise PermissionDenied("Missing user id in headers")
 
         serializer.save(user_id=user_id)
+
+class ActivityUpdateView(generics.UpdateAPIView):
+    queryset = Activity.objects.filter(is_deleted=False)
+    serializer_class = ActivitySerializer
+
+    authentication_classes = []
+    permission_classes = []
+
+    lookup_field = "activity_id"
+
+    def perform_update(self, serializer):
+        user_id = self.request.META.get("HTTP_X_USER_ID")
+
+        if not user_id:
+            raise PermissionDenied("Missing user id in headers.")
+
+        activity = self.get_object()
+
+        # only owner
+        if str(activity.user_id) != str(user_id):
+            raise PermissionDenied(
+                "You can only edit your own activities."
+            )
+
+        # only same day
+        today = timezone.localdate()
+
+        if activity.activity_date != today:
+            raise ValidationError({
+                "activity_date":
+                    "Activities can only be edited on the same day."
+            })
+
+        serializer.save()
