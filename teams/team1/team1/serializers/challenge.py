@@ -35,6 +35,9 @@ class ChallengeDetailSerializer(serializers.ModelSerializer):
     Serializer for retrieving challenge details (Public fields only).
     Excluded internal fields like is_deleted, created_at, updated_at.
     """
+    # a custom method field for participant count
+    # participant_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Challenge
         
@@ -49,11 +52,20 @@ class ChallengeDetailSerializer(serializers.ModelSerializer):
             'date_start', 
             'date_end', 
             'status', 
-            'created_by' 
+            'created_by' ,
+            # 'participant_count'
         ]
         
         # Ensure it's read-only since this is for a GET request
         read_only_fields = fields
+
+    # def get_participant_count(self, obj):
+    #     # NOTE: If you set a 'related_name' in your Participant model's 
+    #     # ForeignKey (e.g., related_name='participants'), change 'participant_set' 
+    #     # to that related_name (e.g., obj.participants.filter(...)).
+        
+    #     # Filter out soft-deleted participants to get the true active count
+    #     return obj.participant_set.filter(is_deleted=False).count()
 
 
 class LeaderboardSerializer(serializers.Serializer):
