@@ -30,3 +30,10 @@ class ChallengeSerializer(serializers.ModelSerializer):
         return data
 
 
+class LeaderboardSerializer(serializers.Serializer):
+    rank = serializers.IntegerField()
+    user_id = serializers.IntegerField()
+    score = serializers.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+    )

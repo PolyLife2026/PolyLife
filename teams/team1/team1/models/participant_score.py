@@ -24,6 +24,9 @@ class ParticipantScore(models.Model):
     class Meta:
         db_table = "participant_score"
         unique_together = ("challenge", "user_id")
+        indexes = [
+            models.Index(fields=["challenge", "-score"], name="idx_score_challenge"),
+        ]
 
     def __str__(self):
         return f"{self.user_id} - {self.challenge_id} - {self.score}"

@@ -6,6 +6,13 @@ from .permissions import IsCoach, IsChallengeCreator
 from rest_framework.exceptions import ValidationError
 from django.utils import timezone
 from rest_framework.response import Response
+from django.core.paginator import Paginator
+from rest_framework.response import Response
+from rest_framework import generics
+
+from ..models import ParticipantScore
+from ..serializers.challenge import LeaderboardSerializer
+
 
 
 # Create your views here.
@@ -82,3 +89,41 @@ class ChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance.save()
         
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ChallengeLeaderboardView(generics.GenericAPIView):
+
+    serializer_class = LeaderboardSerializer
+
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request, challenge_id):
+
+        page_number = request.GET.get("page", 1)
+
+        queryset = ParticipantScore.objects.filter(
+            challenge_id=challenge_id
+        ).order_by("-score", "user_id")
+
+        paginator = Paginator(queryset, 10)
+
+        page = paginator.get_page(page_number)
+
+        rank = (page.number - 1) * paginator.per_page + 1
+
+        data = []
+
+        for participant in page.object_list:
+
+            data.append({
+                "rank": rank,
+                "user_id": participant.user_id,
+                "score": participant.score,
+            })
+
+            rank += 1
+
+        serializer = self.get_serializer(data, many=True)
+
+        return Response(serializer.data)
