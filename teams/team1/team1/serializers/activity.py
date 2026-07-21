@@ -39,8 +39,18 @@ class ActivitySerializer(serializers.ModelSerializer):
                 "challenge": "activities can only be submitted to an active challenge."
             })
 
-        # Note: checking that activity_date falls within
-        # challenge.date_start / challenge.date_end is handled separately
-        # in SCRUM-87 (validate the challenge's active date window).
+        # --- SCRUM-87: activity_date must fall within the challenge's window ---
+        activity_date = data.get('activity_date')
+        if activity_date is not None:
+            start = challenge.date_start.date()
+            end = challenge.date_end.date()
+
+            if activity_date < start or activity_date > end:
+                raise serializers.ValidationError({
+                    "activity_date": (
+                        f"activity_date must be between {start} and {end} "
+                        f"(the challenge's active period)."
+                    )
+                })
 
         return data
