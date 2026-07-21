@@ -470,3 +470,67 @@ class ActivityUpdateTests(APITestCase):
         self.old_activity.refresh_from_db()
 
         self.assertEqual(str(self.old_activity.value), "8.00")
+
+class ParticipantScoreAPITest(APITestCase):
+
+    def setUp(self):
+        self.url = '/team1/api/activities/'
+
+        now = timezone.now()
+
+        self.challenge = Challenge.objects.create(
+            title="Running Challenge",
+            description="Test",
+            difficulty="easy",
+            activity_type="running",
+            value_goal="10.00",
+            goal_unit="km",
+            date_start=now - timedelta(days=1),
+            date_end=now + timedelta(days=5),
+            status="active",
+            created_by=1,
+        )
+
+        self.payload = {
+            "challenge": self.challenge.challenge_id,
+            "value": "5.00",
+            "activity_date": timezone.localdate(),
+            "note": "Morning Run"
+        }
+
+    def test_participant_score_created_and_updated(self):
+
+        headers = {
+            "HTTP_X_USER_ID": "100"
+        }
+
+        response = self.client.post(
+            self.url,
+            data=self.payload,
+            format="json",
+            **headers
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        score = ParticipantScore.objects.get(
+            user_id=100,
+            challenge=self.challenge
+        )
+
+        self.assertEqual(float(score.score), 50.00)
+
+        self.payload["value"] = "2.50"
+
+        response = self.client.post(
+            self.url,
+            data=self.payload,
+            format="json",
+            **headers
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        score.refresh_from_db()
+
+        self.assertEqual(float(score.score), 75.00)
