@@ -2,7 +2,7 @@ from django.urls import path
 
 from . import views
 from .views.activity_views import ActivityCreateView, ActivityUpdateView
-from .views.challenge_views import ChallengeCreateView, ChallengeDetailView
+from .views.challenge_views import ChallengeCreateView, ChallengeDetailView, ChallengeLeaderboardView
 from .views.competition_views import (
     CompetitionCreateView,
     CompetitionJoinView,
@@ -47,5 +47,10 @@ urlpatterns = [
         "api/competitions/<int:pk>/join/",
         CompetitionJoinView.as_view(),
         name="competition-join",
+    ),
+    path(
+        "api/challenges/<int:challenge_id>/leaderboard/",
+        ChallengeLeaderboardView.as_view(),
+        name="challenge-leaderboard",
     ),
 ]

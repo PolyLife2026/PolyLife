@@ -678,3 +678,56 @@ class CompetitionJoinAPITest(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+class ChallengeLeaderboardAPITest(APITestCase):
+
+    def setUp(self):
+
+        self.url = "/team1/api/challenges/1/leaderboard/"
+
+        now = timezone.now()
+
+        self.challenge = Challenge.objects.create(
+            title="Leaderboard Test",
+            description="test",
+            difficulty="easy",
+            activity_type="running",
+            value_goal="100",
+            goal_unit="km",
+            date_start=now,
+            date_end=now + timedelta(days=5),
+            status="active",
+            created_by=1,
+        )
+
+        ParticipantScore.objects.create(
+            challenge=self.challenge,
+            user_id=1,
+            score="60",
+        )
+
+        ParticipantScore.objects.create(
+            challenge=self.challenge,
+            user_id=2,
+            score="95",
+        )
+
+        ParticipantScore.objects.create(
+            challenge=self.challenge,
+            user_id=3,
+            score="30",
+        )
+
+    def test_challenge_leaderboard(self):
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertEqual(response.data[0]["user_id"], 2)
+        self.assertEqual(response.data[1]["user_id"], 1)
+        self.assertEqual(response.data[2]["user_id"], 3)
+
+        self.assertEqual(response.data[0]["rank"], 1)
+        self.assertEqual(response.data[1]["rank"], 2)
+        self.assertEqual(response.data[2]["rank"], 3)
