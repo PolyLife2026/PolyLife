@@ -30,11 +30,23 @@ class MealLog(BaseModel):
     log_date = models.DateField()
     total_calories = models.IntegerField(default=0)
 
+    class Meta:
+        # جلوگیری از ثبت دو لاگ روزانه برای یک کاربر در یک تاریخ
+        unique_together = ('user_id', 'log_date')
+
 class MealLogItem(BaseModel):
+    # تعریف مقادیر مجاز برای وعده‌های غذایی
+    MEAL_TYPES = (
+        ('breakfast', 'Breakfast'),
+        ('lunch', 'Lunch'),
+        ('dinner', 'Dinner'),
+        ('snack', 'Snack'),
+    )
     meal_log = models.ForeignKey(MealLog, on_delete=models.CASCADE, related_name='items')
     food_item = models.ForeignKey(FoodItem, on_delete=models.PROTECT)
     quantity_grams = models.DecimalField(max_digits=6, decimal_places=2)
-    meal_type = models.CharField(max_length=50)
+    # اضافه شدن محدودیت choices به فیلد
+    meal_type = models.CharField(max_length=50, choices=MEAL_TYPES)
 
 class FavoriteFood(BaseModel):
     user_id = models.CharField(max_length=255, db_index=True)
