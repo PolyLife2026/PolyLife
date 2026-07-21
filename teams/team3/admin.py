@@ -1,5 +1,14 @@
-from django.contrib import admin  # noqa: F401
+from django.contrib import admin
+from .models import (
+    HealthProfile, FoodItem, MealLog, MealLogItem,
+    FavoriteFood, SearchHistory, ErrorReport, DailyStreak,
+)
 
-# Register your team's models here, e.g.:
-# from .models import Note
-# admin.site.register(Note)
+admin.site.register(HealthProfile)
+admin.site.register(FoodItem)
+admin.site.register(MealLog)
+admin.site.register(MealLogItem)
+admin.site.register(FavoriteFood)
+admin.site.register(SearchHistory)
+admin.site.register(ErrorReport)
+admin.site.register(DailyStreak)
