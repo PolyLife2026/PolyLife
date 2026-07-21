@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework import generics
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from ..models import Activity
+from ..models import Activity, Challenge
 from ..serializers.activity import ActivitySerializer
 
 
@@ -17,21 +17,32 @@ class ActivityCreateView(generics.CreateAPIView):
     queryset = Activity.objects.all()
     serializer_class = ActivitySerializer
 
-    authentication_classes = []  # for test purposes only, same as ChallengeCreateView
-    permission_classes = []      # any authenticated participant may submit activities;
-    # unlike challenges, no coach-only restriction applies here
+    authentication_classes = []
+    permission_classes = []
 
     def perform_create(self, serializer):
         # Get the user id from the request headers.
-        # Per project architecture: our service must NOT decode the JWT —
-        # the Gateway already validated it and forwards the user's identity
-        # through this header.
-        user_id = self.request.META.get('HTTP_X_USER_ID')
+        user_id = self.request.META.get("HTTP_X_USER_ID")
 
         if not user_id:
-            raise PermissionDenied("Missing user id in headers")
+            raise PermissionDenied("Missing user id in headers.")
+
+        challenge = serializer.validated_data["challenge"]
+
+        # Automatically close challenge if it has expired
+        if (
+                challenge.status == Challenge.Status.STARTED
+                and challenge.date_end <= timezone.now()
+        ):
+            challenge.status = Challenge.Status.ENDED
+            challenge.save(update_fields=["status"])
+
+            raise ValidationError({
+                "challenge": "This challenge has ended and no longer accepts activities."
+            })
 
         serializer.save(user_id=user_id)
+
 
 class ActivityUpdateView(generics.UpdateAPIView):
     queryset = Activity.objects.filter(is_deleted=False)
@@ -50,13 +61,27 @@ class ActivityUpdateView(generics.UpdateAPIView):
 
         activity = self.get_object()
 
-        # only owner
+        # Only the owner can edit the activity
         if str(activity.user_id) != str(user_id):
             raise PermissionDenied(
                 "You can only edit your own activities."
             )
 
-        # only same day
+        challenge = activity.challenge
+
+        # Automatically close challenge if it has expired
+        if (
+                challenge.status == Challenge.Status.STARTED
+                and challenge.date_end <= timezone.now()
+        ):
+            challenge.status = Challenge.Status.ENDED
+            challenge.save(update_fields=["status"])
+
+            raise ValidationError({
+                "challenge": "This challenge has ended and activities can no longer be edited."
+            })
+
+        # Only allow editing on the same day
         today = timezone.localdate()
 
         if activity.activity_date != today:

@@ -801,3 +801,53 @@ class MyRankAPITest(APITestCase):
             str(response.data["score"]),
             "70.00"
         )
+
+class ChallengeAutoCloseTest(APITestCase):
+
+    def setUp(self):
+        self.url = "/team1/api/activities/"
+
+        self.challenge = Challenge.objects.create(
+            title="Expired Challenge",
+            description="Test",
+            difficulty="easy",
+            activity_type="running",
+            value_goal="10.00",
+            goal_unit="km",
+            date_start=timezone.now() - timedelta(days=5),
+            date_end=timezone.now() - timedelta(minutes=1),
+            status=Challenge.Status.STARTED,
+            created_by=1,
+        )
+
+    def test_activity_submission_to_expired_challenge(self):
+
+        payload = {
+            "challenge": self.challenge.challenge_id,
+            "value": "5.00",
+            "activity_date": timezone.localdate(),
+        }
+
+        response = self.client.post(
+            self.url,
+            data=payload,
+            format="json",
+            HTTP_X_USER_ID="10",
+        )
+
+        self.challenge.refresh_from_db()
+
+        self.assertEqual(
+            self.challenge.status,
+            Challenge.Status.ENDED
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST
+        )
+
+        self.assertEqual(
+            Activity.objects.count(),
+            0
+        )
