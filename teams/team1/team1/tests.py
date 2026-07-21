@@ -4,6 +4,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from models import ParticipantScore
 from .models import Activity, Challenge, Competition
 
 
