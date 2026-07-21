@@ -731,3 +731,73 @@ class ChallengeLeaderboardAPITest(APITestCase):
         self.assertEqual(response.data[0]["rank"], 1)
         self.assertEqual(response.data[1]["rank"], 2)
         self.assertEqual(response.data[2]["rank"], 3)
+
+class MyRankAPITest(APITestCase):
+
+    def setUp(self):
+
+        self.url = "/team1/api/challenges/1/my-rank/"
+
+        now = timezone.now()
+
+        self.challenge = Challenge.objects.create(
+            title="Running Challenge",
+            description="Test",
+            difficulty="easy",
+            activity_type="running",
+            value_goal="100",
+            goal_unit="km",
+            date_start=now,
+            date_end=now + timedelta(days=5),
+            status="active",
+            created_by=1,
+        )
+
+        ParticipantScore.objects.create(
+            challenge=self.challenge,
+            user_id=1,
+            score="95.00",
+        )
+
+        ParticipantScore.objects.create(
+            challenge=self.challenge,
+            user_id=2,
+            score="70.00",
+        )
+
+        ParticipantScore.objects.create(
+            challenge=self.challenge,
+            user_id=3,
+            score="40.00",
+        )
+
+    def test_my_rank_success(self):
+
+        headers = {
+            "HTTP_X_USER_ID": "2"
+        }
+
+        response = self.client.get(
+            self.url,
+            **headers
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK
+        )
+
+        self.assertEqual(
+            response.data["rank"],
+            2
+        )
+
+        self.assertEqual(
+            response.data["user_id"],
+            2
+        )
+
+        self.assertEqual(
+            str(response.data["score"]),
+            "70.00"
+        )

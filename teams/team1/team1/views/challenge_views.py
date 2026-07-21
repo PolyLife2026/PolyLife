@@ -13,6 +13,12 @@ from rest_framework import generics
 
 from ..models import ParticipantScore
 from ..serializers.challenge import LeaderboardSerializer
+from rest_framework import generics
+from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
+
+from ..models import ParticipantScore
+from ..serializers.challenge import LeaderboardSerializer
 
 
 
@@ -100,3 +106,45 @@ class ChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
         
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
+
+class MyRankView(generics.GenericAPIView):
+
+    serializer_class = LeaderboardSerializer
+
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request, challenge_id):
+
+        user_id = request.META.get("HTTP_X_USER_ID")
+
+        if not user_id:
+            raise PermissionDenied("Missing user id in headers.")
+
+        try:
+            participant = ParticipantScore.objects.get(
+                challenge_id=challenge_id,
+                user_id=user_id,
+            )
+        except ParticipantScore.DoesNotExist:
+            return Response(
+                {"detail": "Participant not found."},
+                status=404,
+            )
+
+        rank = (
+                ParticipantScore.objects.filter(
+                    challenge_id=challenge_id,
+                    score__gt=participant.score,
+                ).count()
+                + 1
+        )
+
+        serializer = self.get_serializer({
+            "rank": rank,
+            "user_id": participant.user_id,
+            "score": participant.score,
+        })
+
+        return Response(serializer.data)

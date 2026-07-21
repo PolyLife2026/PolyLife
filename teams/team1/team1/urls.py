@@ -4,8 +4,8 @@ from . import views
 from .views.activity_views import ActivityCreateView, ActivityUpdateView
 from .views.challenge_views import (
     ChallengeCreateView,
-    ChallengeDetailView, 
-    ChallengeLeaderboardView,
+    ChallengeDetailView,
+    ChallengeLeaderboardView, MyRankView,
 ) 
 from .views.competition_views import (
     CompetitionCreateView,
@@ -56,5 +56,10 @@ urlpatterns = [
         "api/challenges/<int:challenge_id>/leaderboard/",
         ChallengeLeaderboardView.as_view(),
         name="challenge-leaderboard",
+    ),
+    path(
+        "api/challenges/<int:challenge_id>/my-rank/",
+        MyRankView.as_view(),
+        name="my-rank",
     ),
 ]
