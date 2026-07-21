@@ -18,7 +18,13 @@ from django.utils import timezone
 #     text = models.TextField()
 #     created_at = models.DateTimeField(auto_now_add=True)
 
+class ActiveChallengeManager(models.Manager):
+    def get_queryset(self):
+        # Only return challenges that are not deleted
+        return super().get_queryset().filter(is_deleted=False)
+
 class Challenge(models.Model):
+
     class Difficulty(models.TextChoices):
         EASY = "easy", "Easy"
         MEDIUM = "medium", "Medium"
@@ -58,6 +64,12 @@ class Challenge(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
     is_deleted = models.BooleanField(default=False)
+
+    # Overriding the default manager to prevent showing the deleted challenges in the queryset
+    objects = models.Manager()
+    
+    # Keeping a reference to the default manager to access deleted items if needed
+    all_objects = models.Manager()
 
     class Meta:
         db_table = 'challenge'
