@@ -10,7 +10,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Activity, Challenge
+from .models import Activity, Challenge, Competition
 class ChallengeCreateAPITest(APITestCase):
     def setUp(self):
   
@@ -219,3 +219,66 @@ class ActivityCreateTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("activity_date", response.data)
         self.assertEqual(Activity.objects.count(), 0)
+
+class CompetitionCreateAPITest(APITestCase):
+    """SCRUM-126: unit tests for Competition creation permissions and validation."""
+
+    def setUp(self):
+        self.url = "/team1/api/competitions/"
+
+        self.valid_payload = {
+            "title": "Summer Weight-Loss Cup",
+            "description": "Weight loss competition among users",
+            "rules": "Whoever loses the most weight (%) wins.",
+            "competition_type": "weight_loss",
+            "date_start": "2026-08-01T00:00:00Z",
+            "date_end": "2026-08-31T23:59:59Z",
+        }
+
+    def _post(self, payload, role="coach", user_id="123"):
+        headers = {"HTTP_X_USER_ROLE": role, "HTTP_X_USER_ID": user_id}
+        return self.client.post(self.url, data=payload, format="json", **headers)
+
+    def test_create_competition_as_coach_success(self):
+        """A coach can create a competition; created_by comes from the header."""
+        response = self._post(self.valid_payload)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        competition = Competition.objects.get(title="Summer Weight-Loss Cup")
+        self.assertEqual(competition.created_by, 123)
+        self.assertEqual(competition.status, Competition.Status.PENDING)
+
+    def test_create_competition_non_coach_forbidden(self):
+        """A non-coach (e.g. a regular participant) gets 403 Forbidden."""
+        response = self._post(self.valid_payload, role="student", user_id="124")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Competition.objects.count(), 0)
+
+    def test_missing_user_id_header_is_rejected(self):
+        headers = {"HTTP_X_USER_ROLE": "coach"}
+        response = self.client.post(self.url, data=self.valid_payload, format="json", **headers)
+
+        self.assertIn(response.status_code, (status.HTTP_400_BAD_REQUEST, status.HTTP_403_FORBIDDEN))
+        self.assertEqual(Competition.objects.count(), 0)
+
+    def test_end_date_before_start_date_is_rejected(self):
+        payload = dict(self.valid_payload)
+        payload["date_start"] = "2026-08-31T00:00:00Z"
+        payload["date_end"] = "2026-08-01T00:00:00Z"
+
+        response = self._post(payload)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("date_end", response.data)
+        self.assertEqual(Competition.objects.count(), 0)
+
+    def test_invalid_competition_type_is_rejected(self):
+        payload = dict(self.valid_payload)
+        payload["competition_type"] = "not_a_real_type"
+
+        response = self._post(payload)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Competition.objects.count(), 0)
