@@ -26,28 +26,28 @@ class ActiveChallengeManager(models.Manager):
 class Challenge(models.Model):
 
     class Difficulty(models.TextChoices):
-        EASY = "easy", "Easy"
-        MEDIUM = "medium", "Medium"
-        HARD = "hard", "Hard"
+        EASY = "easy", "Easy", "EASY"
+        MEDIUM = "medium", "Medium", "MEDIUM"
+        HARD = "hard", "Hard", "HARD"
 
     class Status(models.TextChoices):
-        CREATED = "created", "Created"
-        STARTED = "started", "Started"
-        ENDED = "ended", "Ended"
-        CANCELLED = "cancelled", "Cancelled"
+        CREATED = "created", "Created", "CREATED"
+        STARTED = "started", "Started", "STARTED"
+        ENDED = "ended", "Ended", "ENDED"
+        CANCELLED = "cancelled", "Cancelled", "CANCELLED"
 
     class ActivityType(models.TextChoices):
-        RUNNING = "running", "Running"
-        SWIMMING = "swimming", "Swimming"
-        CYCLING = "cycling", "Cycling"
-        WALKING = "walking", "Walking"
+        RUNNING = "running", "Running", "RUNNING"
+        SWIMMING = "swimming", "Swimming", "SWIMMING"
+        CYCLING = "cycling", "Cycling", "CYCLING"
+        WALKING = "walking", "Walking", "WALKING"
 
     class GoalUnit(models.TextChoices):
-        KM = "km", "Kilometers"
-        MINUTE = "minute", "Minutes"
-        STEP = "step", "Steps"
-        CALORIE = "calorie", "Calories"
-        KG = "kg", "Kilograms"
+        KM = "km", "Kilometers", "KM", "KILOMETERS"
+        MINUTE = "minute", "Minutes", "MINUTE", "MINUTES"
+        STEP = "step", "Steps", "STEP", "STEPS"
+        CALORIE = "calorie", "Calories", "CALORIE", "CALORIES"
+        KG = "kg", "Kilograms", "KG", "KILOGRAMS"
 
     challenge_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=100)

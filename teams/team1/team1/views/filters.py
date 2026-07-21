@@ -3,8 +3,15 @@ from ..models import Challenge
 
 class ChallengeFilter(django_filters.FilterSet):
 
-    activity_type = django_filters.CharFilter(field_name='activity_type', lookup_expr='iexact')
-    difficulty = django_filters.CharFilter(field_name='difficulty', lookup_expr='iexact')
+    activity_type = django_filters.ChoiceFilter(
+        choices=Challenge.ActivityType.choices,
+        help_text="Filter by exact activity type."
+    )
+    
+    difficulty = django_filters.ChoiceFilter(
+        choices=Challenge.Difficulty.choices,
+        help_text="Filter by exact difficulty level."
+    )
     
     # Filtering based on date range since 'duration' is not a direct DB field
     date_start_after = django_filters.DateTimeFilter(field_name='date_start', lookup_expr='gte')
