@@ -1,7 +1,8 @@
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
+from rest_framework import viewsets
 from ..models import Challenge
-from ..serializers.challenge import ChallengeSerializer
+from ..serializers.challenge import ChallengeSerializer, ChallengeDetailSerializer
 from .permissions import IsCoach, IsChallengeCreator 
 from rest_framework.exceptions import ValidationError
 from django.utils import timezone
@@ -40,13 +41,22 @@ class ChallengeCreateView(generics.CreateAPIView):
 
 class ChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
 
-    queryset = Challenge.objects.all()
-
-    serializer_class = ChallengeSerializer
-
+    # Remove queryset = Challenge.objects.all() and use get_queryset instead
+    
     permission_classes = [IsCoach, IsChallengeCreator]
 
     lookup_field = 'challenge_id'
+
+    def get_queryset(self):
+        # 1. Fix soft-delete issue: Only return challenges that are not deleted
+        return Challenge.objects.filter(is_deleted=False)
+
+    def get_serializer_class(self):
+        # 2. Fix serialization issue: Use DetailSerializer only for GET requests
+        if self.request.method == 'GET':
+            return ChallengeDetailSerializer
+        # Use default serializer for PUT, PATCH, DELETE
+        return ChallengeSerializer
 
     def update(self, request, *args, **kwargs):
         # get the challenge instance
@@ -66,7 +76,7 @@ class ChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
 
         return super().update(request, *args, **kwargs)
     
-    #soft delete the challenge
+    # soft delete the challenge
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
 
@@ -82,3 +92,4 @@ class ChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance.save()
         
         return Response(status=status.HTTP_204_NO_CONTENT)
+

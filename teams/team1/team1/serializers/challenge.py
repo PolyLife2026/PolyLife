@@ -28,5 +28,31 @@ class ChallengeSerializer(serializers.ModelSerializer):
             })
             
         return data
+    
+
+class ChallengeDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer for retrieving challenge details (Public fields only).
+    Excluded internal fields like is_deleted, created_at, updated_at.
+    """
+    class Meta:
+        model = Challenge
+        
+        fields = [
+            'challenge_id', 
+            'title', 
+            'description', 
+            'activity_type', 
+            'difficulty', 
+            'value_goal', 
+            'goal_unit', 
+            'date_start', 
+            'date_end', 
+            'status', 
+            'created_by' 
+        ]
+        
+        # Ensure it's read-only since this is for a GET request
+        read_only_fields = fields
 
 
