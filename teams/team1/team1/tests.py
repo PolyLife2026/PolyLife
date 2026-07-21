@@ -1,3 +1,4 @@
+from decimal import Decimal
 from datetime import timedelta
 from django.urls import reverse
 from django.utils import timezone
@@ -910,3 +911,88 @@ class ChallengeAutoCloseTest(APITestCase):
             Activity.objects.count(),
             0
         )
+
+class CompetitionResultAPITest(APITestCase):
+    """
+    SCRUM-28:
+    Test recording competition results and ranking recalculation.
+    """
+
+    def setUp(self):
+        self.competition = Competition.objects.create(
+            title="Summer Competition",
+            description="Test Competition",
+            rules="Test Rules",
+            competition_type=Competition.CompetitionType.WEIGHT_LOSS,
+            date_start=timezone.now() + timedelta(days=1),
+            date_end=timezone.now() + timedelta(days=10),
+            status=Competition.Status.ACTIVE,
+            created_by=1,
+        )
+        self.p1 = CompetitionParticipant.objects.create(
+            competition=self.competition, user_id=100
+        )
+        self.p2 = CompetitionParticipant.objects.create(
+            competition=self.competition, user_id=200
+        )
+        self.url = f"/team1/api/competitions/{self.competition.competition_id}/results/"
+
+    def _record(self, user_id, score, method="post"):
+        client_method = getattr(self.client, method)
+        return client_method(
+            self.url,
+            data={"user_id": user_id, "score": score},
+            format="json",
+            HTTP_X_USER_ROLE="coach",
+            HTTP_X_USER_ID="1",
+        )
+
+    def test_score_is_persisted(self):
+        response = self._record(100, 42.5)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.p1.refresh_from_db()
+        self.assertEqual(self.p1.total_score, Decimal("42.50"))
+
+    def test_ranking_recalculated_after_result(self):
+        self._record(100, 30)
+        self._record(200, 90)
+
+        self.p1.refresh_from_db()
+        self.p2.refresh_from_db()
+
+        self.assertEqual(self.p2.rank, 1)
+        self.assertEqual(self.p1.rank, 2)
+
+    def test_tied_scores_share_the_same_rank(self):
+        self._record(100, 50)
+        self._record(200, 50)
+
+        self.p1.refresh_from_db()
+        self.p2.refresh_from_db()
+
+        self.assertEqual(self.p1.rank, 1)
+        self.assertEqual(self.p2.rank, 1)
+
+    def test_result_for_non_participant_is_rejected(self):
+        response = self._record(999, 10)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_non_coach_cannot_record_results(self):
+        response = self.client.post(
+            self.url,
+            data={"user_id": 100, "score": 42.5},
+            format="json",
+            HTTP_X_USER_ROLE="student",
+            HTTP_X_USER_ID="1",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_put_also_records_result(self):
+        response = self._record(100, 77, method="put")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.p1.refresh_from_db()
+        self.assertEqual(self.p1.total_score, Decimal("77.00"))

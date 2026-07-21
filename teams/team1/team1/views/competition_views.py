@@ -8,6 +8,8 @@ from django.views.decorators.csrf import csrf_exempt
 
 from ..models import Competition, CompetitionParticipant
 from ..serializers.competition import CompetitionSerializer
+from ..serializers.competition_result import CompetitionResultSerializer
+from ..services.competition_ranking import recalculate_competition_rankings
 from .permissions import IsCoach
 
 
@@ -89,3 +91,66 @@ class CompetitionJoinView(APIView):
             {"message": "Successfully joined competition."},
             status=status.HTTP_201_CREATED
         )
+
+class CompetitionResultView(APIView):
+    """
+    SCRUM-28
+
+    POST/PUT /team1/api/competitions/<id>/results/
+
+    Records (or updates) a single participant's score in a competition and
+    immediately recalculates rankings for the whole competition. Restricted
+    to coaches/admins (same as CompetitionCreateView).
+    """
+
+    authentication_classes = []
+    permission_classes = [IsCoach]
+
+    def _record_result(self, request, pk):
+        try:
+            competition = Competition.objects.get(
+                competition_id=pk,
+                is_deleted=False,
+            )
+        except Competition.DoesNotExist:
+            return Response(
+                {"detail": "Competition not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = CompetitionResultSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user_id = serializer.validated_data["user_id"]
+        score = serializer.validated_data["score"]
+
+        try:
+            participant = CompetitionParticipant.objects.get(
+                competition=competition, user_id=user_id
+            )
+        except CompetitionParticipant.DoesNotExist:
+            return Response(
+                {"detail": "This user has not joined the competition."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        participant.total_score = score
+        participant.save(update_fields=["total_score"])
+
+        # SCRUM-28 (subtask 3): recalculate rankings for the whole competition.
+        recalculate_competition_rankings(competition.competition_id)
+        participant.refresh_from_db()
+
+        return Response(
+            {
+                "user_id": participant.user_id,
+                "total_score": participant.total_score,
+                "rank": participant.rank,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request, pk):
+        return self._record_result(request, pk)
+
+    def put(self, request, pk):
+        return self._record_result(request, pk)
