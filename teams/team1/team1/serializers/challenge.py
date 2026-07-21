@@ -68,6 +68,19 @@ class ChallengeDetailSerializer(serializers.ModelSerializer):
     #     return obj.participant_set.filter(is_deleted=False).count()
 
 
+class ChallengeListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Challenge
+        # Exclude internal fields; only expose public info for the list
+        fields = [
+            'challenge_id', 
+            'title', 
+            'status', 
+            'date_start', 
+            'date_end'
+        ]
+
+
 class LeaderboardSerializer(serializers.Serializer):
     rank = serializers.IntegerField()
     user_id = serializers.IntegerField()
