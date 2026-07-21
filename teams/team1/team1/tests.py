@@ -2,8 +2,15 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 
 from team1.serializers import challenge
-from .models.challenge import Challenge 
+from .models.challenge import Challenge
+from datetime import timedelta
 
+from django.urls import reverse
+from django.utils import timezone
+from rest_framework import status
+from rest_framework.test import APITestCase
+
+from .models import Activity, Challenge
 class ChallengeCreateAPITest(APITestCase):
     def setUp(self):
   
@@ -73,3 +80,142 @@ class ChallengeCreateAPITest(APITestCase):
         # check for validation error (400 Bad Request)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+
+
+
+class ActivityCreateTests(APITestCase):
+    """
+    SCRUM-88: covers the happy path (successful submission) plus the
+    validation errors introduced in SCRUM-85/86/87:
+      - missing X-User-Id header
+      - non-positive value
+      - non-existent / deleted challenge
+      - challenge that is not active (ended/cancelled)
+      - activity_date outside the challenge's date_start/date_end window
+    """
+
+    def setUp(self):
+        self.url = reverse('team1:activity-create')
+        now = timezone.now()
+
+        self.active_challenge = Challenge.objects.create(
+            title="30-day running challenge",
+            activity_type=Challenge.ActivityType.RUNNING,
+            difficulty=Challenge.Difficulty.MEDIUM,
+            value_goal=100,
+            goal_unit=Challenge.GoalUnit.KM,
+            date_start=now - timedelta(days=1),
+            date_end=now + timedelta(days=29),
+            status=Challenge.Status.ACTIVE,
+            created_by=1,
+        )
+
+        self.ended_challenge = Challenge.objects.create(
+            title="finished challenge",
+            activity_type=Challenge.ActivityType.WALKING,
+            difficulty=Challenge.Difficulty.EASY,
+            value_goal=50,
+            goal_unit=Challenge.GoalUnit.KM,
+            date_start=now - timedelta(days=60),
+            date_end=now - timedelta(days=30),
+            status=Challenge.Status.ENDED,
+            created_by=1,
+        )
+
+    def _post(self, data, user_id="42"):
+        headers = {}
+        if user_id is not None:
+            headers['HTTP_X_USER_ID'] = user_id
+        return self.client.post(self.url, data, format='json', **headers)
+
+    # --- happy path ---
+
+    def test_successful_submission(self):
+        response = self._post({
+            "challenge": self.active_challenge.challenge_id,
+            "value": "5.50",
+            "activity_date": timezone.now().date().isoformat(),
+            "note": "morning run",
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Activity.objects.count(), 1)
+
+        activity = Activity.objects.first()
+        self.assertEqual(activity.user_id, 42)
+        self.assertEqual(activity.challenge_id, self.active_challenge.challenge_id)
+        self.assertFalse(activity.is_deleted)
+
+    # --- missing user header ---
+
+    def test_missing_user_id_header_is_rejected(self):
+        response = self._post(
+            {
+                "challenge": self.active_challenge.challenge_id,
+                "value": "5",
+                "activity_date": timezone.now().date().isoformat(),
+            },
+            user_id=None,
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Activity.objects.count(), 0)
+
+    # --- non-positive value ---
+
+    def test_non_positive_value_is_rejected(self):
+        response = self._post({
+            "challenge": self.active_challenge.challenge_id,
+            "value": "0",
+            "activity_date": timezone.now().date().isoformat(),
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("value", response.data)
+        self.assertEqual(Activity.objects.count(), 0)
+
+    # --- invalid / missing challenge ---
+
+    def test_nonexistent_challenge_is_rejected(self):
+        response = self._post({
+            "challenge": 999999,
+            "value": "5",
+            "activity_date": timezone.now().date().isoformat(),
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Activity.objects.count(), 0)
+
+    def test_deleted_challenge_is_rejected(self):
+        self.active_challenge.is_deleted = True
+        self.active_challenge.save()
+
+        response = self._post({
+            "challenge": self.active_challenge.challenge_id,
+            "value": "5",
+            "activity_date": timezone.now().date().isoformat(),
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("challenge", response.data)
+        self.assertEqual(Activity.objects.count(), 0)
+
+    # --- inactive (ended) challenge ---
+
+    def test_ended_challenge_is_rejected(self):
+        response = self._post({
+            "challenge": self.ended_challenge.challenge_id,
+            "value": "5",
+            "activity_date": (timezone.now() - timedelta(days=40)).date().isoformat(),
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("challenge", response.data)
+        self.assertEqual(Activity.objects.count(), 0)
+
+    # --- activity_date outside the challenge's window ---
+
+    def test_activity_date_outside_challenge_window_is_rejected(self):
+        response = self._post({
+            "challenge": self.active_challenge.challenge_id,
+            "value": "5",
+            "activity_date": (timezone.now() + timedelta(days=100)).date().isoformat(),
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("activity_date", response.data)
+        self.assertEqual(Activity.objects.count(), 0)
