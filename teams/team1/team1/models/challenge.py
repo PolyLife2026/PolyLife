@@ -25,7 +25,8 @@ class Challenge(models.Model):
         HARD = "hard", "Hard"
 
     class Status(models.TextChoices):
-        ACTIVE = "active", "Active"
+        CREATED = "created", "Created"
+        STARTED = "started", "Started"
         ENDED = "ended", "Ended"
         CANCELLED = "cancelled", "Cancelled"
 
@@ -51,7 +52,7 @@ class Challenge(models.Model):
     goal_unit = models.CharField(max_length=20, choices=GoalUnit.choices)
     date_start = models.DateTimeField()
     date_end = models.DateTimeField()
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE, db_index=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.CREATED, db_index=True)
     created_by = models.BigIntegerField(db_index=True)
 
     created_at = models.DateTimeField(auto_now_add=True)

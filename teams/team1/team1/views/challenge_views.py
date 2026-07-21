@@ -49,10 +49,10 @@ class ChallengeUpdateView(generics.RetrieveUpdateAPIView):
         # get the challenge instance
         instance = self.get_object()
 
-        # check if the challenge is in 'active-not-started' status
-        if instance.status != 'active-not-started':
+        # check if the challenge is in 'created' status
+        if instance.status != 'created':
             raise ValidationError({
-                "detail": "Challenges can only be updated when in 'active-not-started' status."
+                "detail": "Challenges can only be updated when in 'created' status."
             })
         
         # check if the challenge's start date has passed
