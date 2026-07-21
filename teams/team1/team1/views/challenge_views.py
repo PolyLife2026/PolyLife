@@ -2,7 +2,7 @@ from rest_framework import generics
 from rest_framework.exceptions import PermissionDenied
 from ..models import Challenge
 from ..serializers.challenge import ChallengeSerializer
-from .permissions import IsCoach
+from .permissions import IsCoach, IsChallengeCreator 
 from rest_framework.exceptions import ValidationError
 from django.utils import timezone
 
@@ -36,9 +36,13 @@ class ChallengeCreateView(generics.CreateAPIView):
             raise PermissionDenied("Missing user id in headers")
 
 class ChallengeUpdateView(generics.RetrieveUpdateAPIView):
+
     queryset = Challenge.objects.all()
+
     serializer_class = ChallengeSerializer
-    permission_classes = [IsCoach]  # only the coach can update the challenge
+
+    permission_classes = [IsCoach, IsChallengeCreator]  # only the coach can update the challenge
+
     lookup_field = 'challenge_id'
 
     def update(self, request, *args, **kwargs):
