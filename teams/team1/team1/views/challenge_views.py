@@ -1,10 +1,12 @@
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
 from ..models import Challenge
 from ..serializers.challenge import ChallengeSerializer
 from .permissions import IsCoach, IsChallengeCreator 
 from rest_framework.exceptions import ValidationError
 from django.utils import timezone
+from rest_framework.response import Response
+
 
 # Create your views here.
 
@@ -35,21 +37,22 @@ class ChallengeCreateView(generics.CreateAPIView):
             # Handle the case where the user id is not provided in the headers
             raise PermissionDenied("Missing user id in headers")
 
-class ChallengeUpdateView(generics.RetrieveUpdateAPIView):
+
+class ChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     queryset = Challenge.objects.all()
 
     serializer_class = ChallengeSerializer
 
-    permission_classes = [IsCoach, IsChallengeCreator]  # only the coach can update the challenge
-
+    permission_classes = [IsCoach, IsChallengeCreator]
+    
     lookup_field = 'challenge_id'
 
     def update(self, request, *args, **kwargs):
         # get the challenge instance
         instance = self.get_object()
 
-        # check if the challenge is in 'active' status
+        # check if the challenge is in 'active' status (or 'created' based on your logic)
         if instance.status != 'created':
             raise ValidationError({
                 "detail": "Challenges can only be updated when in 'active' status."
@@ -61,5 +64,14 @@ class ChallengeUpdateView(generics.RetrieveUpdateAPIView):
                 "detail": "The challenge start time has been reached or passed, and it can no longer be updated."
             })
 
-        # if all checks pass, proceed with the update
         return super().update(request, *args, **kwargs)
+    
+    #soft delete the challenge
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        
+        # Perform soft delete
+        instance.is_deleted = True
+        instance.save()
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
