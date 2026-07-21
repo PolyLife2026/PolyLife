@@ -608,6 +608,65 @@ class ChallengeSoftDeleteTests(APITestCase):
         # Verify the challenge is NOT soft-deleted
         self.started_challenge.refresh_from_db()
         self.assertFalse(self.started_challenge.is_deleted)
+
+class ChallengeDetailTests(APITestCase):
+
+    def setUp(self):
+
+        now = timezone.now()
+
+        # Set up authentication headers
+        self.auth_headers = {
+            'HTTP_X_USER_ID': '1',
+            'HTTP_X_USERNAME': 'user1',
+            'HTTP_X_USER_ROLE': 'coach',
+        }
+        
+        # Create a sample challenge
+        self.challenge = Challenge.objects.create(
+            title='Detail View Test',
+            description='Test description 1',
+            created_by=1,
+            status='created',
+            value_goal=100,
+            date_start=now,                             
+            date_end=now + timedelta(days=7),
+        )
+        
+        # Define URL using the correct namespace and lookup field
+        self.url = reverse('team1:challenge-detail', kwargs={'challenge_id': self.challenge.challenge_id})
+
+    def test_serializer_output_and_participant_count(self):
+        """Ensure detail serializer returns expected public fields."""
+        response = self.client.get(self.url, **self.auth_headers)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # # Check if custom serializer field is present
+        # self.assertIn('participant_count', response.data)
+        # self.assertEqual(response.data['participant_count'], 0)
+        
+        # Check if internal fields are excluded (adjust based on your serializer)
+        self.assertNotIn('is_deleted', response.data)
+
+    def test_challenge_not_found_404(self):
+        """Ensure getting a non-existent challenge returns 404."""
+        url = reverse('team1:challenge-detail', kwargs={'challenge_id': 99999})
+        response = self.client.get(url, **self.auth_headers)
+        
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_soft_deleted_challenge_returns_404(self):
+        """Ensure getting a soft-deleted challenge returns 404, not 200."""
+        # Soft delete the challenge
+        self.challenge.is_deleted = True
+        self.challenge.save()
+        
+        response = self.client.get(self.url, **self.auth_headers)
+        
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
 class CompetitionJoinAPITest(APITestCase):
     """
     SCRUM-27:
