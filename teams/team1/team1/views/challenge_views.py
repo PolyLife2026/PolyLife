@@ -10,6 +10,9 @@ class ChallengeCreateView(generics.CreateAPIView):
     """
     POST /team1/api/challenges/
     Creates a new challenge. The request body should contain the challenge data in JSON format.
+    required Header:
+      X-User-Id: <user_id> (the id of the user creating the challenge)
+      X-User-Role: <user_role> (the role of the user creating the challenge, e.g., "coach")
     """
     queryset = Challenge.objects.all()
     serializer_class = ChallengeSerializer
