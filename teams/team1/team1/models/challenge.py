@@ -66,7 +66,7 @@ class Challenge(models.Model):
     is_deleted = models.BooleanField(default=False)
 
     # Overriding the default manager to prevent showing the deleted challenges in the queryset
-    objects = models.Manager()
+    objects = ActiveChallengeManager()
     
     # Keeping a reference to the default manager to access deleted items if needed
     all_objects = models.Manager()

@@ -4,7 +4,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from models import ParticipantScore
+from .models import ParticipantScore
 from .models import Activity, Challenge, Competition
 
 
@@ -356,7 +356,6 @@ class ChallengeUpdateAPITest(APITestCase):
         self.pre_start_challenge.refresh_from_db()
         self.assertNotEqual(self.pre_start_challenge.title, "Should not update")
 
-
 class ActivityUpdateTests(APITestCase):
     """
     SCRUM-19:
@@ -535,3 +534,76 @@ class ParticipantScoreAPITest(APITestCase):
         score.refresh_from_db()
 
         self.assertEqual(float(score.score), 75.00)
+
+
+class ChallengeSoftDeleteTests(APITestCase):
+
+    def setUp(self):
+
+        now = timezone.now()
+
+        # Mocking the custom headers used for authentication in PolyLife
+        self.auth_headers = {
+            'HTTP_X_USER_ID': '1',
+            'HTTP_X_USERNAME': 'user1',
+            'HTTP_X_USER_ROLE': 'coach',
+        }
+        
+        # 1. Create a challenge in CREATED status
+        self.created_challenge = Challenge.objects.create(
+            title='Created Challenge',
+            description='Test description 1',
+            created_by=1,
+            status='created',
+            value_goal=100,
+            date_start=now,                             
+            date_end=now + timedelta(days=7),
+            # Add other required fields based on your model
+        )
+        
+        # 2. Create a challenge in STARTED status (or ENDED)
+        self.started_challenge = Challenge.objects.create(
+            title='Started Challenge',
+            description='Test description 2',
+            created_by=1,
+            status='Started',
+            value_goal=100,
+            date_start=now,                             
+            date_end=now + timedelta(days=7),
+        )
+
+    def test_soft_delete_created_challenge(self):
+        """
+        Ensure that a challenge with 'CREATED' status can be soft-deleted.
+        """
+        # Assuming your detail URL pattern is named 'challenge-detail'
+        url = reverse('team1:challenge-detail', args=[self.created_challenge.challenge_id])
+        
+        # Send DELETE request with custom auth headers
+        response = self.client.delete(url, **self.auth_headers)
+        
+        # Check if the API returns 204 No Content
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        
+        # Verify the challenge still exists in the database but is_deleted is True
+        # Note: We use _base_manager to bypass the ActiveChallengeManager if it hides deleted items
+        deleted_challenge = Challenge._base_manager.get(challenge_id=self.created_challenge.challenge_id)
+        self.assertTrue(deleted_challenge.is_deleted)
+        
+        # Verify it does not appear in normal queries (using the default manager)
+        self.assertFalse(Challenge.objects.filter(challenge_id=self.created_challenge.challenge_id).exists())
+
+    def test_block_delete_started_challenge(self):
+        """
+        Ensure that deleting a challenge not in 'CREATED' status is blocked.
+        """
+        url = reverse('team1:challenge-detail', args=[self.started_challenge.challenge_id])
+        
+        response = self.client.delete(url, **self.auth_headers)
+        
+        # Check if the API correctly blocks the action (Assuming 400 Bad Request is returned by your View)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        # Verify the challenge is NOT soft-deleted
+        self.started_challenge.refresh_from_db()
+        self.assertFalse(self.started_challenge.is_deleted)

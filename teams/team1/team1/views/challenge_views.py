@@ -53,7 +53,7 @@ class ChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance = self.get_object()
 
         # check if the challenge is in 'active' status (or 'created' based on your logic)
-        if instance.status != 'created':
+        if instance.status != instance.Status.CREATED:
             raise ValidationError({
                 "detail": "Challenges can only be updated when in 'active' status."
             })
