@@ -215,6 +215,98 @@ class ChallengeUpdateAPITest(APITestCase):
         self.pre_start_challenge.refresh_from_db()
         self.assertNotEqual(self.pre_start_challenge.title, "Should not update")
 
+class ChallengeFilterTests(APITestCase):
+
+    def setUp(self):
+        self.url = reverse('team1:challenge-list')
+        self.headers = {'HTTP_X_USER_ID': '1', 'HTTP_X_USER_ROLE': 'coach'}
+        
+        now = timezone.now()
+        
+        # Create Challenge 1
+        self.challenge_easy_running = Challenge.objects.create(
+            title="Morning Run",
+            description="Easy morning run",
+            creator_id=1,
+            activity_type=Challenge.ActivityType.RUNNING, 
+            difficulty=Challenge.Difficulty.EASY,
+            status=Challenge.Status.CREATED,
+            date_start=now + timedelta(days=1),
+            date_end=now + timedelta(days=5)
+        )
+        
+        # Create Challenge 2
+        self.challenge_hard_cycling = Challenge.objects.create(
+            title="Mountain Biking",
+            description="Hard mountain trail",
+            creator_id=2,
+            activity_type=Challenge.ActivityType.CYCLING,  
+            difficulty=Challenge.Difficulty.HARD,       
+            status=Challenge.Status.STARTED,         
+            date_start=now + timedelta(days=10),
+            date_end=now + timedelta(days=15)
+        )
+
+    def test_filter_by_activity_type(self):
+        # Test filtering by a single valid activity_type
+        response = self.client.get(self.url, {'activity_type': 'running'}, **self.headers)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['id'], self.challenge_easy_running.id)
+
+    def test_filter_by_difficulty(self):
+        # Test filtering by a single valid difficulty
+        response = self.client.get(self.url, {'difficulty': 'hard'}, **self.headers)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['id'], self.challenge_hard_cycling.id)
+
+    def test_filter_invalid_choice_returns_400(self):
+        # Test invalid choice returns 400 Bad Request (handled by ChoiceFilter)
+        response = self.client.get(self.url, {'difficulty': 'INVALID_DIFF'}, **self.headers)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_filter_combined(self):
+        # Test combining multiple filters
+        response = self.client.get(self.url, {
+            'activity_type': 'cycling',
+            'difficulty': 'hard'
+        }, **self.headers)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['id'], self.challenge_hard_cycling.id)
+
+    def test_filter_by_date_range(self):
+        # Test filtering challenges starting after a specific date
+        filter_date = (timezone.now() + timedelta(days=7)).isoformat()
+        response = self.client.get(self.url, {'date_start_after': filter_date}, **self.headers)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['id'], self.challenge_hard_cycling.id)
+
+    def test_filter_exclude_deleted_and_cancelled(self):
+        # Create a cancelled challenge
+        Challenge.objects.create(
+            title="Cancelled Event",
+            description=Challenge.Difficulty.EASY,
+            creator_id=1,
+            activity_type=Challenge.ActivityType.RUNNING,
+            difficulty=Challenge.Difficulty.EASY,
+            status=Challenge.Status.CANCELLED,
+            date_start=timezone.now(),
+            date_end=timezone.now() + timedelta(days=1)
+        )
+        
+        # Ensure the cancelled challenge is excluded from the normal GET request
+        response = self.client.get(self.url, **self.headers)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Assuming pagination is StandardResultsSetPagination, check 'results'
+        challenge_ids = [c['id'] for c in response.data['results']]
+        self.assertEqual(len(challenge_ids), 2)
+
 
 class ActivityCreateTests(APITestCase):
     """
