@@ -45,7 +45,7 @@ class ChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ChallengeSerializer
 
     permission_classes = [IsCoach, IsChallengeCreator]
-    
+
     lookup_field = 'challenge_id'
 
     def update(self, request, *args, **kwargs):
@@ -69,6 +69,13 @@ class ChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
     #soft delete the challenge
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
+
+        # Block deletion if challenge is not in CREATED status (e.g., STARTED or ENDED)
+        if instance.status != instance.Status.CREATED:
+            return Response(
+                {"error": "Deletion is not allowed after the challenge has started."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         # Perform soft delete
         instance.is_deleted = True
