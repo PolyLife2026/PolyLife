@@ -3,6 +3,8 @@ from rest_framework.exceptions import PermissionDenied
 from ..models import Challenge
 from ..serializers.challenge import ChallengeSerializer
 from .permissions import IsCoach
+from rest_framework.exceptions import ValidationError
+from django.utils import timezone
 
 # Create your views here.
 
@@ -34,11 +36,26 @@ class ChallengeCreateView(generics.CreateAPIView):
             raise PermissionDenied("Missing user id in headers")
 
 class ChallengeUpdateView(generics.RetrieveUpdateAPIView):
-
     queryset = Challenge.objects.all()
-
     serializer_class = ChallengeSerializer
-
     permission_classes = [IsCoach]  # only the coach can update the challenge
-
     lookup_field = 'challenge_id'
+
+    def update(self, request, *args, **kwargs):
+        # get the challenge instance
+        instance = self.get_object()
+
+        # check if the challenge is in 'active-not-started' status
+        if instance.status != 'active-not-started':
+            raise ValidationError({
+                "detail": "Challenges can only be updated when in 'active-not-started' status."
+            })
+        
+        # check if the challenge's start date has passed
+        if instance.date_start and instance.date_start <= timezone.now():
+            raise ValidationError({
+                "detail": "The challenge start time has been reached or passed, and it can no longer be updated."
+            })
+
+        # if all checks pass, proceed with the update
+        return super().update(request, *args, **kwargs)
