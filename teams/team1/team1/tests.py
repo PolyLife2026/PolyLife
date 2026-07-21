@@ -1,19 +1,14 @@
-from rest_framework.test import APITestCase
-from rest_framework import status
-
-from team1.serializers import challenge
-from .models.challenge import Challenge
 from datetime import timedelta
-
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from .models import Activity, Challenge, Competition
+
+
 class ChallengeCreateAPITest(APITestCase):
     def setUp(self):
-  
         self.url = '/team1/api/challenges/' 
         
         # a valid payload for creating a challenge
@@ -33,7 +28,6 @@ class ChallengeCreateAPITest(APITestCase):
         headers = {
             'HTTP_X_USER_ROLE': 'coach',
             'HTTP_X_USER_ID': '123'
-
         }
         
         response = self.client.post(self.url, data=self.valid_payload, format='json', **headers)
@@ -81,8 +75,6 @@ class ChallengeCreateAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
-
-
 class ActivityCreateTests(APITestCase):
     """
     SCRUM-88: covers the happy path (successful submission) plus the
@@ -90,7 +82,7 @@ class ActivityCreateTests(APITestCase):
       - missing X-User-Id header
       - non-positive value
       - non-existent / deleted challenge
-      - challenge that is not active (ended/cancelled)
+      - challenge that is not started (ended/cancelled)
       - activity_date outside the challenge's date_start/date_end window
     """
 
@@ -106,7 +98,7 @@ class ActivityCreateTests(APITestCase):
             goal_unit=Challenge.GoalUnit.KM,
             date_start=now - timedelta(days=1),
             date_end=now + timedelta(days=29),
-            status=Challenge.Status.ACTIVE,
+            status=Challenge.Status.STARTED,
             created_by=1,
         )
 
@@ -220,6 +212,7 @@ class ActivityCreateTests(APITestCase):
         self.assertIn("activity_date", response.data)
         self.assertEqual(Activity.objects.count(), 0)
 
+
 class CompetitionCreateAPITest(APITestCase):
     """SCRUM-126: unit tests for Competition creation permissions and validation."""
 
@@ -283,6 +276,86 @@ class CompetitionCreateAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Competition.objects.count(), 0)
 
+
+class ChallengeUpdateAPITest(APITestCase):
+    """Unit tests for challenge edit rules: allowed before start, blocked after start, blocked for non-owner."""
+
+    def setUp(self):
+        self.url = lambda challenge_id: reverse(
+            "team1:challenge-update",
+            kwargs={"challenge_id": challenge_id},
+        )
+
+        now = timezone.now()
+
+        self.pre_start_challenge = Challenge.objects.create(
+            title="Pre-start challenge",
+            activity_type=Challenge.ActivityType.RUNNING,
+            difficulty=Challenge.Difficulty.MEDIUM,
+            value_goal=100,
+            goal_unit=Challenge.GoalUnit.KM,
+            date_start=now + timedelta(days=2),
+            date_end=now + timedelta(days=10),
+            status=Challenge.Status.CREATED,
+            created_by=10,
+        )
+
+        self.post_start_challenge = Challenge.objects.create(
+            title="Post-start challenge",
+            activity_type=Challenge.ActivityType.RUNNING,
+            difficulty=Challenge.Difficulty.MEDIUM,
+            value_goal=80,
+            goal_unit=Challenge.GoalUnit.KM,
+            date_start=now - timedelta(days=1),
+            date_end=now + timedelta(days=10),
+            status=Challenge.Status.CREATED,
+            created_by=10,
+        )
+
+    def _patch(self, challenge_id, data, user_id="10", role="coach"):
+        headers = {
+            "HTTP_X_USER_ID": user_id,
+            "HTTP_X_USER_ROLE": role,
+        }
+        return self.client.patch(
+            self.url(challenge_id),
+            data=data,
+            format="json",
+            **headers,
+        )
+
+    def test_edit_allowed_before_challenge_start(self):
+        response = self._patch(
+            self.pre_start_challenge.challenge_id,
+            {"title": "Updated before start"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.pre_start_challenge.refresh_from_db()
+        self.assertEqual(self.pre_start_challenge.title, "Updated before start")
+
+    def test_edit_blocked_after_challenge_start(self):
+        response = self._patch(
+            self.post_start_challenge.challenge_id,
+            {"title": "Should not update"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.post_start_challenge.refresh_from_db()
+        self.assertNotEqual(self.post_start_challenge.title, "Should not update")
+
+    def test_edit_blocked_for_non_owner(self):
+        response = self._patch(
+            self.pre_start_challenge.challenge_id,
+            {"title": "Should not update"},
+            user_id="99",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.pre_start_challenge.refresh_from_db()
+        self.assertNotEqual(self.pre_start_challenge.title, "Should not update")
+
+
 class ActivityUpdateTests(APITestCase):
     """
     SCRUM-19:
@@ -308,7 +381,7 @@ class ActivityUpdateTests(APITestCase):
             goal_unit=Challenge.GoalUnit.KM,
             date_start=now - timedelta(days=1),
             date_end=now + timedelta(days=10),
-            status=Challenge.Status.ACTIVE,
+            status=Challenge.Status.STARTED,
             created_by=1,
         )
 

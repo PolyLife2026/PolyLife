@@ -34,9 +34,9 @@ class ActivitySerializer(serializers.ModelSerializer):
                 "challenge": "this challenge no longer exists."
             })
 
-        if challenge.status != Challenge.Status.ACTIVE:
+        if challenge.status != Challenge.Status.STARTED:
             raise serializers.ValidationError({
-                "challenge": "activities can only be submitted to an active challenge."
+                "challenge": "activities can only be submitted to an started challenge."
             })
 
         # --- SCRUM-87: activity_date must fall within the challenge's window ---
@@ -49,7 +49,7 @@ class ActivitySerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     "activity_date": (
                         f"activity_date must be between {start} and {end} "
-                        f"(the challenge's active period)."
+                        f"(the challenge's started period)."
                     )
                 })
 
