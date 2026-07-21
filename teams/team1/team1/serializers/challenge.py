@@ -1,10 +1,19 @@
 from rest_framework import serializers
 from ..models import Challenge
+from decimal import Decimal
+from django.core.validators import MinValueValidator
 
 class ChallengeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Challenge
-        fields = '__all__'  
+        fields = '__all__'
+        read_only_fields = (
+            'challenge_id',
+            'created_at',
+            'updated_at',
+            'is_deleted',
+            'created_by',
+        )
         
     def validate(self, data):
         if data.get('date_start') and data.get('date_end'):
@@ -19,3 +28,5 @@ class ChallengeSerializer(serializers.ModelSerializer):
             })
             
         return data
+
+
