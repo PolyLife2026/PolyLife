@@ -26,7 +26,8 @@ from rest_framework import generics
 from ..models import ParticipantScore
 from ..serializers.challenge import LeaderboardSerializer
 
-
+from django_filters.rest_framework import DjangoFilterBackend
+from .filters import ChallengeFilter
 
 
 # Create your views here.
@@ -38,6 +39,10 @@ class ChallengeListCreateView(generics.ListCreateAPIView):
     """
     # For testing purposes without logging in
     authentication_classes = [] 
+
+    serializer_class = ChallengeListSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ChallengeFilter
     
     def get_queryset(self):
         # Exclude soft-deleted and cancelled challenges
@@ -66,7 +71,7 @@ class ChallengeListCreateView(generics.ListCreateAPIView):
         user_id = self.request.META.get('HTTP_X_USER_ID')
         
         if user_id:
-            serializer.save(created_by=user_id)
+            serializer.save(created_by=int(user_id))
         else:
             raise PermissionDenied("Missing user id in headers")
 
