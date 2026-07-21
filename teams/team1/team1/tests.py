@@ -11,6 +11,7 @@ from .models import Activity, Challenge, Competition
 
 
 class ChallengeCreateAPITest(APITestCase):
+
     def setUp(self):
         self.url = '/team1/api/challenges/' 
         
@@ -76,6 +77,143 @@ class ChallengeCreateAPITest(APITestCase):
         
         # check for validation error (400 Bad Request)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class ChallengeListTests(APITestCase):
+
+    def setUp(self):
+
+        now = timezone.now()
+
+        # Create an active challenge
+        self.active_challenge = Challenge.objects.create(
+            title="Active Challenge",
+            description="This is a public challenge.",
+            status="created",
+            activity_type=Challenge.ActivityType.RUNNING,
+            difficulty=Challenge.Difficulty.MEDIUM,
+            value_goal=100,
+            goal_unit=Challenge.GoalUnit.KM,
+            date_start=now + timedelta(days=2),
+            date_end=now + timedelta(days=10),
+            is_deleted=False,
+            created_by=10,
+        )
+        
+        # Create a soft-deleted challenge
+        self.deleted_challenge = Challenge.objects.create(
+            title="Deleted Challenge",
+            description="This challenge is deleted.",
+            status="created",
+            activity_type=Challenge.ActivityType.RUNNING,
+            difficulty=Challenge.Difficulty.MEDIUM,
+            value_goal=100,
+            goal_unit=Challenge.GoalUnit.KM,
+            date_start=now + timedelta(days=2),
+            date_end=now + timedelta(days=10),
+            is_deleted=True,
+            created_by=10,
+        )
+        
+        self.url = reverse('team1:challenge-list-create') 
+
+        self.headers = {
+            'HTTP_X_USER_ROLE': 'coach',
+            'HTTP_X_USER_ID': '1'
+        }
+
+    def test_list_challenges_returns_only_active(self):
+        # Act
+        response = self.client.get(self.url, **self.headers)
+        
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Handle response data (checking if pagination is applied globally)
+        # If standard DRF pagination is active, items are inside 'results'
+        data = response.data.get('results', response.data) if isinstance(response.data, dict) else response.data
+        
+        # We only expect 1 active challenge, the soft-deleted one should be hidden
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]['title'], self.active_challenge.title)
+
+class ChallengeUpdateAPITest(APITestCase):
+    """Unit tests for challenge edit rules: allowed before start, blocked after start, blocked for non-owner."""
+
+    def setUp(self):
+        self.url = lambda challenge_id: reverse(
+            "team1:challenge-update",
+            kwargs={"challenge_id": challenge_id},
+        )
+
+        now = timezone.now()
+
+        self.pre_start_challenge = Challenge.objects.create(
+            title="Pre-start challenge",
+            activity_type=Challenge.ActivityType.RUNNING,
+            difficulty=Challenge.Difficulty.MEDIUM,
+            value_goal=100,
+            goal_unit=Challenge.GoalUnit.KM,
+            date_start=now + timedelta(days=2),
+            date_end=now + timedelta(days=10),
+            status=Challenge.Status.CREATED,
+            created_by=10,
+        )
+
+        self.post_start_challenge = Challenge.objects.create(
+            title="Post-start challenge",
+            activity_type=Challenge.ActivityType.RUNNING,
+            difficulty=Challenge.Difficulty.MEDIUM,
+            value_goal=80,
+            goal_unit=Challenge.GoalUnit.KM,
+            date_start=now - timedelta(days=1),
+            date_end=now + timedelta(days=10),
+            status=Challenge.Status.CREATED,
+            created_by=10,
+        )
+
+    def _patch(self, challenge_id, data, user_id="10", role="coach"):
+        headers = {
+            "HTTP_X_USER_ID": user_id,
+            "HTTP_X_USER_ROLE": role,
+        }
+        return self.client.patch(
+            self.url(challenge_id),
+            data=data,
+            format="json",
+            **headers,
+        )
+
+    def test_edit_allowed_before_challenge_start(self):
+        response = self._patch(
+            self.pre_start_challenge.challenge_id,
+            {"title": "Updated before start"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.pre_start_challenge.refresh_from_db()
+        self.assertEqual(self.pre_start_challenge.title, "Updated before start")
+
+    def test_edit_blocked_after_challenge_start(self):
+        response = self._patch(
+            self.post_start_challenge.challenge_id,
+            {"title": "Should not update"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.post_start_challenge.refresh_from_db()
+        self.assertNotEqual(self.post_start_challenge.title, "Should not update")
+
+    def test_edit_blocked_for_non_owner(self):
+        response = self._patch(
+            self.pre_start_challenge.challenge_id,
+            {"title": "Should not update"},
+            user_id="99",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.pre_start_challenge.refresh_from_db()
+        self.assertNotEqual(self.pre_start_challenge.title, "Should not update")
 
 
 class ActivityCreateTests(APITestCase):
@@ -279,84 +417,6 @@ class CompetitionCreateAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Competition.objects.count(), 0)
 
-
-class ChallengeUpdateAPITest(APITestCase):
-    """Unit tests for challenge edit rules: allowed before start, blocked after start, blocked for non-owner."""
-
-    def setUp(self):
-        self.url = lambda challenge_id: reverse(
-            "team1:challenge-update",
-            kwargs={"challenge_id": challenge_id},
-        )
-
-        now = timezone.now()
-
-        self.pre_start_challenge = Challenge.objects.create(
-            title="Pre-start challenge",
-            activity_type=Challenge.ActivityType.RUNNING,
-            difficulty=Challenge.Difficulty.MEDIUM,
-            value_goal=100,
-            goal_unit=Challenge.GoalUnit.KM,
-            date_start=now + timedelta(days=2),
-            date_end=now + timedelta(days=10),
-            status=Challenge.Status.CREATED,
-            created_by=10,
-        )
-
-        self.post_start_challenge = Challenge.objects.create(
-            title="Post-start challenge",
-            activity_type=Challenge.ActivityType.RUNNING,
-            difficulty=Challenge.Difficulty.MEDIUM,
-            value_goal=80,
-            goal_unit=Challenge.GoalUnit.KM,
-            date_start=now - timedelta(days=1),
-            date_end=now + timedelta(days=10),
-            status=Challenge.Status.CREATED,
-            created_by=10,
-        )
-
-    def _patch(self, challenge_id, data, user_id="10", role="coach"):
-        headers = {
-            "HTTP_X_USER_ID": user_id,
-            "HTTP_X_USER_ROLE": role,
-        }
-        return self.client.patch(
-            self.url(challenge_id),
-            data=data,
-            format="json",
-            **headers,
-        )
-
-    def test_edit_allowed_before_challenge_start(self):
-        response = self._patch(
-            self.pre_start_challenge.challenge_id,
-            {"title": "Updated before start"},
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.pre_start_challenge.refresh_from_db()
-        self.assertEqual(self.pre_start_challenge.title, "Updated before start")
-
-    def test_edit_blocked_after_challenge_start(self):
-        response = self._patch(
-            self.post_start_challenge.challenge_id,
-            {"title": "Should not update"},
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.post_start_challenge.refresh_from_db()
-        self.assertNotEqual(self.post_start_challenge.title, "Should not update")
-
-    def test_edit_blocked_for_non_owner(self):
-        response = self._patch(
-            self.pre_start_challenge.challenge_id,
-            {"title": "Should not update"},
-            user_id="99",
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.pre_start_challenge.refresh_from_db()
-        self.assertNotEqual(self.pre_start_challenge.title, "Should not update")
 
 class ActivityUpdateTests(APITestCase):
     """
