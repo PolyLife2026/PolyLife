@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createActivity } from '../../services/activities';
+import { createActivity, updateActivity } from '../../services/activities';
 import { todayISO, parseApiError } from '../../utils/formatters';
 import { getGoalUnitLabel } from '../../utils/constants';
 
@@ -7,9 +7,12 @@ export default function ActivityForm({ challengeId, goalUnit, disabled, onSucces
   const [value, setValue] = useState('');
   const [activityDate, setActivityDate] = useState(todayISO());
   const [note, setNote] = useState('');
+  const [todayActivityId, setTodayActivityId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const isEditingToday = todayActivityId && activityDate === todayISO();
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -17,15 +20,23 @@ export default function ActivityForm({ challengeId, goalUnit, disabled, onSucces
     setSuccess('');
     setLoading(true);
     try {
-      await createActivity({
+      const payload = {
         challenge: challengeId,
         value,
         activity_date: activityDate,
         note: note || undefined,
-      });
-      setSuccess('فعالیت با موفقیت ثبت شد! امتیاز و رتبه به‌روزرسانی شد.');
-      setValue('');
-      setNote('');
+      };
+
+      if (isEditingToday) {
+        await updateActivity(todayActivityId, payload);
+        setSuccess('فعالیت امروز ویرایش شد! امتیاز و رتبه به‌روزرسانی شد.');
+      } else {
+        const created = await createActivity(payload);
+        if (activityDate === todayISO() && created?.activity_id) {
+          setTodayActivityId(created.activity_id);
+        }
+        setSuccess('فعالیت با موفقیت ثبت شد! امتیاز و رتبه به‌روزرسانی شد.');
+      }
       onSuccess?.();
     } catch (err) {
       setError(parseApiError(err));
@@ -34,11 +45,18 @@ export default function ActivityForm({ challengeId, goalUnit, disabled, onSucces
     }
   }
 
+  function handleDateChange(nextDate) {
+    setActivityDate(nextDate);
+    if (nextDate !== todayISO()) {
+      setTodayActivityId(null);
+    }
+  }
+
   return (
     <form className="activity-form card" onSubmit={handleSubmit}>
-      <h3>ثبت فعالیت روزانه</h3>
+      <h3>{isEditingToday ? 'ویرایش فعالیت امروز' : 'ثبت فعالیت روزانه'}</h3>
       <p className="form-hint">
-        فعالیت را در همان روز انجام فعالیت ثبت کنید. پس از ثبت، امتیاز و رتبه به‌صورت خودکار به‌روز می‌شود.
+        فعالیت را در همان روز انجام فعالیت ثبت یا ویرایش کنید. پس از هر تغییر، امتیاز و رتبه به‌صورت خودکار به‌روز می‌شود.
       </p>
 
       {disabled && (
@@ -70,8 +88,8 @@ export default function ActivityForm({ challengeId, goalUnit, disabled, onSucces
             type="date"
             required
             value={activityDate}
-            disabled={disabled || loading}
-            onChange={(e) => setActivityDate(e.target.value)}
+            disabled={disabled || loading || isEditingToday}
+            onChange={(e) => handleDateChange(e.target.value)}
           />
         </label>
         <label className="form-grid__full">
@@ -88,7 +106,11 @@ export default function ActivityForm({ challengeId, goalUnit, disabled, onSucces
       </div>
 
       <button type="submit" className="btn btn--primary" disabled={disabled || loading}>
-        {loading ? 'در حال ثبت...' : 'ثبت فعالیت'}
+        {loading
+          ? 'در حال ذخیره...'
+          : isEditingToday
+            ? 'ذخیره ویرایش'
+            : 'ثبت فعالیت'}
       </button>
     </form>
   );
