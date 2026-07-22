@@ -187,3 +187,40 @@ class CompetitionLeaderboardView(generics.ListAPIView):
             queryset = queryset.filter(user_id=user_id)
 
         return queryset
+
+class CompetitionFinalRankingsView(generics.ListAPIView):
+    """
+    SCRUM-30
+
+    GET /team1/api/competitions/<id>/final-rankings/
+
+    Same ordered data as the live leaderboard, but only returned once the
+    competition has actually ended (subtask 2). While it's still
+    pending/active, the response explicitly tells the caller the
+    rankings aren't final yet instead of silently returning partial data.
+    """
+
+    authentication_classes = []
+    serializer_class = CompetitionLeaderboardSerializer
+
+    def list(self, request, *args, **kwargs):
+        competition = get_object_or_404(
+            Competition, competition_id=self.kwargs["pk"], is_deleted=False
+        )
+
+        if competition.status != Competition.Status.FINISHED:
+            return Response(
+                {
+                    "detail": "Final rankings are not available yet: "
+                              "the competition has not ended.",
+                    "status": competition.status,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        return super().list(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return CompetitionParticipant.objects.filter(
+            competition_id=self.kwargs["pk"]
+        ).order_by("rank", "-total_score")

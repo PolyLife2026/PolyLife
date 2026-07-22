@@ -1151,3 +1151,74 @@ class CompetitionResultAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.p1.refresh_from_db()
         self.assertEqual(self.p1.total_score, Decimal("77.00"))
+
+class CompetitionFinalRankingsAPITest(APITestCase):
+    """SCRUM-30: finalized ranking output, including the not-ended edge case and ties."""
+
+    def _make_competition(self, comp_status):
+        return Competition.objects.create(
+            title=f"Competition ({comp_status})",
+            competition_type=Competition.CompetitionType.ACTIVITY_BASED,
+            date_start=timezone.now() - timedelta(days=10),
+            date_end=timezone.now() - timedelta(days=1),
+            status=comp_status,
+            created_by=1,
+        )
+
+    def test_final_rankings_unavailable_while_active(self):
+        competition = self._make_competition(Competition.Status.ACTIVE)
+        url = f"/team1/api/competitions/{competition.competition_id}/final-rankings/"
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data["status"], Competition.Status.ACTIVE)
+
+    def test_final_rankings_unavailable_while_pending(self):
+        competition = self._make_competition(Competition.Status.PENDING)
+        url = f"/team1/api/competitions/{competition.competition_id}/final-rankings/"
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    def test_final_rankings_returned_when_finished(self):
+        competition = self._make_competition(Competition.Status.FINISHED)
+        CompetitionParticipant.objects.create(
+            competition=competition, user_id=100, total_score=90, rank=1
+        )
+        CompetitionParticipant.objects.create(
+            competition=competition, user_id=200, total_score=50, rank=2
+        )
+        url = f"/team1/api/competitions/{competition.competition_id}/final-rankings/"
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data["results"]
+        self.assertEqual([row["user_id"] for row in results], [100, 200])
+
+    def test_final_rankings_with_tied_scores(self):
+        competition = self._make_competition(Competition.Status.FINISHED)
+        CompetitionParticipant.objects.create(
+            competition=competition, user_id=100, total_score=70, rank=1
+        )
+        CompetitionParticipant.objects.create(
+            competition=competition, user_id=200, total_score=70, rank=1
+        )
+        CompetitionParticipant.objects.create(
+            competition=competition, user_id=300, total_score=40, rank=3
+        )
+        url = f"/team1/api/competitions/{competition.competition_id}/final-rankings/"
+
+        response = self.client.get(url)
+        results = response.data["results"]
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(results[0]["rank"], results[1]["rank"])
+        self.assertEqual(results[2]["rank"], 3)
+
+    def test_final_rankings_for_nonexistent_competition_is_404(self):
+        response = self.client.get("/team1/api/competitions/99999/final-rankings/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
