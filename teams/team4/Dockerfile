@@ -11,5 +11,24 @@
 # COPY . .
 # EXPOSE 8000
 # CMD ["gunicorn", "yourproject.wsgi:application", "-b", "0.0.0.0:8000"]
+# FROM python:3.12-slim
+# CMD ["sh", "-c", "echo 'Team team4: replace this Dockerfile with your service'; sleep infinity"]
 FROM python:3.12-slim
-CMD ["sh", "-c", "echo 'Team team4: replace this Dockerfile with your service'; sleep infinity"]
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY backend/ .
+
+EXPOSE 8000
+
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
