@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.http import JsonResponse
-from django.urls import path
+from django.urls import include, path
 
 
 def health_check(request):
@@ -26,4 +26,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/health/", health_check, name="health"),
     path("api/whoami/", whoami, name="whoami"),
+    path("api/store/", include("store.urls")),
 ]
