@@ -13,6 +13,11 @@ def refresh_challenge_status(challenge):
     if challenge.is_deleted or challenge.status == Challenge.Status.CANCELLED:
         return challenge
 
+    # Normalize legacy "active" status to "started"
+    if challenge.status == "active":
+        challenge.status = Challenge.Status.STARTED
+        challenge.save(update_fields=["status"])
+
     now = timezone.now()
 
     if challenge.date_end <= now:

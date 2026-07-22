@@ -77,7 +77,7 @@ export default function ChallengeDetailPage() {
   }, [loadAll]);
 
   useEffect(() => {
-    if (challenge?.status !== 'started') return undefined;
+    if (challenge?.status !== 'started' && challenge?.status !== 'active') return undefined;
     const interval = setInterval(() => {
       loadLeaderboard();
       loadMyRank();
@@ -132,8 +132,9 @@ export default function ChallengeDetailPage() {
   if (error && !challenge) return <div className="alert alert--error page">{error}</div>;
   if (!challenge) return null;
 
-  const canJoin = !joined && ['created', 'started'].includes(challenge.status);
-  const canLogActivity = joined && challenge.status === 'started';
+  const isActiveStatus = ['started', 'active'].includes(challenge.status);
+  const canJoin = !joined && ['created', 'started', 'active'].includes(challenge.status);
+  const canLogActivity = joined && isActiveStatus;
   const isCreator = String(challenge.created_by) === String(userId);
   const canEdit = isCoach && isCreator && challenge.status === 'created';
 
@@ -190,7 +191,7 @@ export default function ChallengeDetailPage() {
         <section className="card">
           <div className="section-header">
             <h3>جدول امتیازات</h3>
-            {challenge.status === 'started' && (
+            {isActiveStatus && (
               <span className="live-badge">● زنده</span>
             )}
           </div>

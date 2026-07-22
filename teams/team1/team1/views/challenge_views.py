@@ -176,7 +176,11 @@ class ChallengeJoinView(APIView):
         refresh_challenge_status(challenge)
         challenge.refresh_from_db()
 
-        allowed_statuses = [Challenge.Status.CREATED, Challenge.Status.STARTED]
+        allowed_statuses = [
+            Challenge.Status.CREATED,
+            Challenge.Status.STARTED,
+            "active",  # legacy status normalized on read
+        ]
         if challenge.status not in allowed_statuses:
             return Response(
                 {"error": f"Cannot join challenge. Current status is {challenge.status}."},

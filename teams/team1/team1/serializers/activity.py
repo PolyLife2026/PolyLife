@@ -38,7 +38,7 @@ class ActivitySerializer(serializers.ModelSerializer):
         refresh_challenge_status(challenge)
         challenge.refresh_from_db()
 
-        if challenge.status != Challenge.Status.STARTED:
+        if challenge.status != Challenge.Status.STARTED and challenge.status != "active":
             raise serializers.ValidationError({
                 "challenge": "activities can only be submitted while the challenge is active (started)."
             })

@@ -22,6 +22,7 @@ export const GOAL_UNITS = [
 export const STATUS_LABELS = {
   created: 'ایجاد شده',
   started: 'در حال برگزاری',
+  active: 'در حال برگزاری',
   ended: 'پایان‌یافته',
   cancelled: 'لغو شده',
 };
