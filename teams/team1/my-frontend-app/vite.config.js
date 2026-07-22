@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/team1/api': {
-        target: 'http://localhost:9101',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       }
     }
