@@ -11,7 +11,15 @@ from .serializers import (
     ProductListSerializer,
 )
 
-
+class Meta:
+    model = Product
+    fields = [
+        "category",
+        "brand",
+        "sport_type",
+        "supplement_id",
+    ]
+    
 class ProductFilter(django_filters.FilterSet):
     min_price = django_filters.NumberFilter(
         field_name="price",
