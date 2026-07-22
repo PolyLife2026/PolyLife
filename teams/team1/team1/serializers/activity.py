@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from ..models import Activity, Challenge
+from ..services.challenge_lifecycle import refresh_challenge_status
 
 
 class ActivitySerializer(serializers.ModelSerializer):
@@ -34,9 +35,12 @@ class ActivitySerializer(serializers.ModelSerializer):
                 "challenge": "this challenge no longer exists."
             })
 
+        refresh_challenge_status(challenge)
+        challenge.refresh_from_db()
+
         if challenge.status != Challenge.Status.STARTED:
             raise serializers.ValidationError({
-                "challenge": "activities can only be submitted to an started challenge."
+                "challenge": "activities can only be submitted while the challenge is active (started)."
             })
 
         # --- SCRUM-87: activity_date must fall within the challenge's window ---

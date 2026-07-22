@@ -12,6 +12,7 @@ import LeaderboardTable from '../components/challenges/LeaderboardTable';
 import ProgressBar from '../components/challenges/ProgressBar';
 import StatusBadge from '../components/challenges/StatusBadge';
 import WinnersPanel from '../components/challenges/WinnersPanel';
+import ParticipantsList from '../components/challenges/ParticipantsList';
 import { useAuth } from '../context/AuthContext';
 import {
   getActivityLabel,
@@ -89,7 +90,17 @@ export default function ChallengeDetailPage() {
     setJoinLoading(true);
     try {
       await joinChallenge(id);
-      setChallenge((prev) => ({ ...prev, is_joined: true }));
+      setChallenge((prev) => ({
+        ...prev,
+        is_joined: true,
+        participants: [
+          ...(prev?.participants ?? []),
+          { user_id: userId, joined_at: new Date().toISOString() },
+        ].filter(
+          (p, index, arr) => arr.findIndex((x) => x.user_id === p.user_id) === index,
+        ),
+      }));
+      loadAll();
     } catch (err) {
       const msg = parseApiError(err);
       if (msg.includes('already joined')) {
@@ -160,6 +171,8 @@ export default function ChallengeDetailPage() {
           )}
         </div>
         {joinError && <div className="alert alert--error">{joinError}</div>}
+
+        <ParticipantsList participants={challenge.participants} />
       </header>
 
       {myRank && (

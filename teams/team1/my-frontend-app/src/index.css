@@ -952,3 +952,45 @@ a:hover {
 .result-entry-form {
   background: linear-gradient(180deg, var(--color-blue-gray), var(--color-white));
 }
+
+.participants-list {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-blue-gray);
+}
+
+.participants-list h3 {
+  margin: 0 0 0.75rem;
+  color: var(--color-teal-dark);
+  font-size: 1rem;
+}
+
+.participants-list__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.participants-list__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-cyan);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.participants-list__user {
+  font-weight: 600;
+  color: var(--color-teal-dark);
+}
+
+.participants-list__date {
+  color: var(--color-teal);
+  font-size: 0.8rem;
+}

@@ -14,6 +14,7 @@ class ChallengeSerializer(serializers.ModelSerializer):
             'updated_at',
             'is_deleted',
             'created_by',
+            'status',
         )
         
     def validate(self, data):
@@ -31,12 +32,18 @@ class ChallengeSerializer(serializers.ModelSerializer):
         return data
     
 
+class ParticipantSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField()
+    joined_at = serializers.DateTimeField()
+
+
 class ChallengeDetailSerializer(serializers.ModelSerializer):
     """
     Serializer for retrieving challenge details (Public fields only).
     Excluded internal fields like is_deleted, created_at, updated_at.
     """
     is_joined = serializers.SerializerMethodField()
+    participants = serializers.SerializerMethodField()
 
     class Meta:
         model = Challenge
@@ -54,6 +61,7 @@ class ChallengeDetailSerializer(serializers.ModelSerializer):
             'status', 
             'created_by',
             'is_joined',
+            'participants',
         ]
         
         # Ensure it's read-only since this is for a GET request
@@ -70,6 +78,14 @@ class ChallengeDetailSerializer(serializers.ModelSerializer):
             challenge=obj,
             user_id=int(user_id),
         ).exists()
+
+    def get_participants(self, obj):
+        queryset = (
+            ParticipantChallenge.objects
+            .filter(challenge=obj, is_deleted=False)
+            .order_by("joined_at")
+        )
+        return ParticipantSerializer(queryset, many=True).data
 
     # def get_participant_count(self, obj):
     #     # NOTE: If you set a 'related_name' in your Participant model's 

@@ -3,9 +3,10 @@ from django.utils import timezone
 from rest_framework import generics
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from ..models import Activity, Challenge
+from ..models import Activity, Challenge, ParticipantChallenge
 from ..serializers.activity import ActivitySerializer
 from ..services.final_ranking import calculate_final_rankings
+from ..services.challenge_lifecycle import refresh_challenge_status
 
 
 class ActivityCreateView(generics.CreateAPIView):
@@ -34,6 +35,16 @@ class ActivityCreateView(generics.CreateAPIView):
             raise PermissionDenied("Missing user id in headers.")
 
         challenge = serializer.validated_data["challenge"]
+        refresh_challenge_status(challenge)
+        challenge.refresh_from_db()
+
+        if not ParticipantChallenge.objects.filter(
+            challenge=challenge,
+            user_id=int(user_id),
+        ).exists():
+            raise ValidationError({
+                "challenge": "You must join this challenge before submitting activities.",
+            })
 
         # Automatically close challenge if it has expired
         if (
@@ -43,7 +54,6 @@ class ActivityCreateView(generics.CreateAPIView):
             challenge.status = Challenge.Status.ENDED
             challenge.save(update_fields=["status"])
 
-            # SCRUM-23
             calculate_final_rankings(challenge.challenge_id)
 
             raise ValidationError({
@@ -81,6 +91,13 @@ class ActivityUpdateView(generics.UpdateAPIView):
             )
 
         challenge = activity.challenge
+        refresh_challenge_status(challenge)
+        challenge.refresh_from_db()
+
+        if challenge.status != Challenge.Status.STARTED:
+            raise ValidationError({
+                "challenge": "Activities can only be edited while the challenge is active.",
+            })
 
         # Automatically close challenge if it has expired
         if (

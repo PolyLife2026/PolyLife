@@ -34,6 +34,10 @@ from django.shortcuts import get_object_or_404
 
 from ..models import UserBadge, Reward
 from ..serializers.challenge import ChallengeResultSerializer
+from ..services.challenge_lifecycle import (
+    refresh_challenge_status,
+    refresh_all_challenge_statuses,
+)
 
 # Create your views here.
 
@@ -69,14 +73,18 @@ class ChallengeListCreateView(generics.ListCreateAPIView):
         if self.request.method == 'POST':
             return [IsCoach()]
         # GET (list) is accessible based on your general policy (e.g., AllowAny)
-        return [] 
+        return []
+
+    def list(self, request, *args, **kwargs):
+        refresh_all_challenge_statuses()
+        return super().list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         # Get the user id from the request headers
         user_id = self.request.META.get('HTTP_X_USER_ID')
         
         if user_id:
-            serializer.save(created_by=int(user_id))
+            serializer.save(created_by=int(user_id), status=Challenge.Status.CREATED)
         else:
             raise PermissionDenied("Missing user id in headers")
 
@@ -102,6 +110,13 @@ class ChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
             return ChallengeDetailSerializer
         # Use default serializer for PUT, PATCH, DELETE
         return ChallengeSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        refresh_challenge_status(instance)
+        instance.refresh_from_db()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
         # get the challenge instance
@@ -156,10 +171,12 @@ class ChallengeJoinView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Get the active challenge
+        # Get the active challenge and refresh its status first
         challenge = get_object_or_404(Challenge, pk=pk, is_deleted=False)
+        refresh_challenge_status(challenge)
+        challenge.refresh_from_db()
 
-        allowed_statuses = ['created', 'started']  # allowed statuses for joining
+        allowed_statuses = [Challenge.Status.CREATED, Challenge.Status.STARTED]
         if challenge.status not in allowed_statuses:
             return Response(
                 {"error": f"Cannot join challenge. Current status is {challenge.status}."},
@@ -169,7 +186,7 @@ class ChallengeJoinView(APIView):
         if ParticipantChallenge.objects.filter(challenge=challenge, user_id=user_id).exists():
             return Response(
                 {"error": "User has already joined this challenge."},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_409_CONFLICT
             )
 
         ParticipantChallenge.objects.create(

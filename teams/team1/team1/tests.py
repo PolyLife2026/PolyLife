@@ -383,9 +383,9 @@ class ChallengeJoinTests(APITestCase):
         url = reverse('team1:challenge-join', kwargs={'pk': self.active_challenge.pk})
         response = self.client.post(url, HTTP_X_USER_ID=self.user_id)
         
-        # Should fail due to UniqueConstraint on (challenge, user_id)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        
+        # Should fail due to duplicate join
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
         # Ensure count remains 1
         self.assertEqual(ParticipantChallenge.objects.count(), 1)
 
@@ -437,6 +437,11 @@ class ActivityCreateTests(APITestCase):
             date_end=now - timedelta(days=30),
             status=Challenge.Status.ENDED,
             created_by=1,
+        )
+
+        ParticipantChallenge.objects.create(
+            challenge=self.active_challenge,
+            user_id=42,
         )
 
     def _post(self, data, user_id="42"):
@@ -536,6 +541,63 @@ class ActivityCreateTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("activity_date", response.data)
         self.assertEqual(Activity.objects.count(), 0)
+
+    def test_activity_without_joining_is_rejected(self):
+        ParticipantChallenge.objects.filter(
+            challenge=self.active_challenge,
+            user_id=42,
+        ).delete()
+
+        response = self._post({
+            "challenge": self.active_challenge.challenge_id,
+            "value": "5",
+            "activity_date": timezone.now().date().isoformat(),
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("challenge", response.data)
+        self.assertEqual(Activity.objects.count(), 0)
+
+
+class ChallengeLifecycleTests(APITestCase):
+    def test_created_becomes_started_when_start_date_passes(self):
+        now = timezone.now()
+        challenge = Challenge.objects.create(
+            title="Lifecycle start",
+            activity_type=Challenge.ActivityType.RUNNING,
+            difficulty=Challenge.Difficulty.EASY,
+            value_goal=10,
+            goal_unit=Challenge.GoalUnit.KM,
+            date_start=now - timedelta(hours=1),
+            date_end=now + timedelta(days=7),
+            status=Challenge.Status.CREATED,
+            created_by=1,
+        )
+
+        url = reverse("team1:challenge-detail", args=[challenge.challenge_id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], Challenge.Status.STARTED)
+
+    def test_started_becomes_ended_when_end_date_passes(self):
+        now = timezone.now()
+        challenge = Challenge.objects.create(
+            title="Lifecycle end",
+            activity_type=Challenge.ActivityType.RUNNING,
+            difficulty=Challenge.Difficulty.EASY,
+            value_goal=10,
+            goal_unit=Challenge.GoalUnit.KM,
+            date_start=now - timedelta(days=7),
+            date_end=now - timedelta(hours=1),
+            status=Challenge.Status.STARTED,
+            created_by=1,
+        )
+
+        url = reverse("team1:challenge-detail", args=[challenge.challenge_id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], Challenge.Status.ENDED)
 
 
 class CompetitionCreateAPITest(APITestCase):

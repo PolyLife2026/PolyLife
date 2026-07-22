@@ -16,7 +16,7 @@ import { formatDateTime, parseApiError } from '../utils/formatters';
 
 export default function CompetitionDetailPage() {
   const { id } = useParams();
-  const { isCoach } = useAuth();
+  const { userId, isCoach } = useAuth();
 
   const [competition, setCompetition] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
