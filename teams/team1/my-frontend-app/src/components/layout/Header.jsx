@@ -29,7 +29,7 @@ export default function Header() {
       <div className="dev-auth-bar">
         <span className="dev-label">حالت توسعه:</span>
         <label>
-          شناسه کاربر
+          شناسه کاربر (X-User-Id)
           <input
             type="number"
             min="1"
@@ -38,12 +38,15 @@ export default function Header() {
           />
         </label>
         <label>
-          نقش
+          نقش (X-User-Role)
           <select value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="participant">شرکت‌کننده</option>
-            <option value="coach">مربی</option>
+            <option value="participant">participant — شرکت‌کننده</option>
+            <option value="coach">coach — مربی (برای ایجاد چالش/مسابقه)</option>
           </select>
         </label>
+        {role !== 'coach' && (
+          <span className="dev-auth-hint">برای ایجاد چالش، نقش را روی coach بگذارید.</span>
+        )}
       </div>
     </header>
   );

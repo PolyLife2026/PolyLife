@@ -153,6 +153,11 @@ a:hover {
   font-family: var(--font-persian);
 }
 
+.dev-auth-hint {
+  color: var(--color-teal-dark);
+  font-weight: 600;
+}
+
 /* Brand divider */
 .brand-divider {
   display: flex;

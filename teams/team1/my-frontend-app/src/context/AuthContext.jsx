@@ -12,11 +12,16 @@ function loadAuth() {
   } catch {
     /* ignore */
   }
-  return { userId: 1, role: 'participant' };
+  return { userId: 1, role: 'coach' };
 }
 
 export function AuthProvider({ children }) {
-  const [auth, setAuth] = useState(loadAuth);
+  const [auth, setAuth] = useState(() => {
+    const loaded = loadAuth();
+    // Set headers immediately so the first API request is not sent without auth.
+    setAuthHeaders(loaded.userId, loaded.role);
+    return loaded;
+  });
 
   useEffect(() => {
     setAuthHeaders(auth.userId, auth.role);
