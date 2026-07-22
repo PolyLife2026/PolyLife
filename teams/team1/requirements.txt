@@ -18,3 +18,5 @@ zstandard==0.25.0
 psycopg[binary]==3.2.3
 djangorestframework
 django-filter==23.5
+django-cors-headers
+

@@ -11,7 +11,8 @@ from .views.challenge_views import (
     MyChallengeResultView,   # <-- اضافه شد
 )
 from .views.competition_views import (
-    CompetitionCreateView,
+    CompetitionListCreateView,
+    CompetitionDetailView,
     CompetitionJoinView,
     CompetitionResultView,
     CompetitionLeaderboardView,
@@ -70,8 +71,13 @@ urlpatterns = [
     # Competition
     path(
         "api/competitions/",
-        CompetitionCreateView.as_view(),
-        name="competition-create",
+        CompetitionListCreateView.as_view(),
+        name="competition-list-create",
+    ),
+    path(
+        "api/competitions/<int:competition_id>/",
+        CompetitionDetailView.as_view(),
+        name="competition-detail",
     ),
     path(
         "api/competitions/<int:pk>/join/",
