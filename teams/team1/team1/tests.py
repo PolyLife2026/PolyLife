@@ -11,6 +11,9 @@ from .models import ParticipantScore
 from .models import Activity, Challenge, Competition, ParticipantChallenge
 from django.test import TestCase
 from .services.final_ranking import calculate_final_rankings
+from .models import Reward
+from .models import UserBadge
+
 class ChallengeCreateAPITest(APITestCase):
 
     def setUp(self):
@@ -1394,3 +1397,104 @@ class FinalRankingTests(TestCase):
 
         self.assertIsNotNone(participant.final_rank)
         self.assertEqual(participant.final_rank, 1)
+
+class RewardDistributionTests(TestCase):
+
+    def setUp(self):
+
+        self.challenge = Challenge.objects.create(
+            title="Reward Test",
+            description="test",
+            activity_type=Challenge.ActivityType.RUNNING,
+            difficulty=Challenge.Difficulty.EASY,
+            value_goal=Decimal("100"),
+            goal_unit=Challenge.GoalUnit.KM,
+            date_start=timezone.now(),
+            date_end=timezone.now(),
+            status=Challenge.Status.ENDED,
+            created_by=1,
+        )
+
+        Reward.objects.create(
+            badge_type=Reward.BadgeType.TOP_1
+        )
+
+        Reward.objects.create(
+            badge_type=Reward.BadgeType.TOP_3
+        )
+
+        Reward.objects.create(
+            badge_type=Reward.BadgeType.TOP_10
+        )
+
+    def create_participant(self, user_id, score):
+
+        ParticipantChallenge.objects.create(
+            challenge=self.challenge,
+            user_id=user_id,
+        )
+
+        ParticipantScore.objects.create(
+            challenge=self.challenge,
+            user_id=user_id,
+            score=Decimal(score),
+        )
+
+    def test_top1_receives_three_badges(self):
+
+        self.create_participant(1, "100")
+        self.create_participant(2, "90")
+        self.create_participant(3, "80")
+
+        calculate_final_rankings(self.challenge.challenge_id)
+
+        self.assertEqual(
+            UserBadge.objects.filter(user_id=1).count(),
+            3,
+        )
+
+    def test_top3_receives_two_badges(self):
+
+        self.create_participant(1, "100")
+        self.create_participant(2, "90")
+        self.create_participant(3, "80")
+        self.create_participant(4, "70")
+
+        calculate_final_rankings(self.challenge.challenge_id)
+
+        self.assertEqual(
+            UserBadge.objects.filter(user_id=2).count(),
+            2,
+        )
+
+    def test_top10_receives_one_badge(self):
+
+        for i in range(1, 11):
+
+            self.create_participant(
+                i,
+                str(100 - i),
+            )
+
+        calculate_final_rankings(self.challenge.challenge_id)
+
+        self.assertEqual(
+            UserBadge.objects.filter(user_id=10).count(),
+            1,
+        )
+
+    def test_outside_top10_receives_no_badge(self):
+
+        for i in range(1, 12):
+
+            self.create_participant(
+                i,
+                str(200 - i),
+            )
+
+        calculate_final_rankings(self.challenge.challenge_id)
+
+        self.assertEqual(
+            UserBadge.objects.filter(user_id=11).count(),
+            0,
+        )
