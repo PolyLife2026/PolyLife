@@ -6,9 +6,11 @@ from rest_framework.views import APIView
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
+from django.shortcuts import get_object_or_404
 from ..models import Competition, CompetitionParticipant
 from ..serializers.competition import CompetitionSerializer
 from ..serializers.competition_result import CompetitionResultSerializer
+from ..serializers.competition_leaderboard import CompetitionLeaderboardSerializer
 from ..services.competition_ranking import recalculate_competition_rankings
 from .permissions import IsCoach
 
@@ -154,3 +156,34 @@ class CompetitionResultView(APIView):
 
     def put(self, request, pk):
         return self._record_result(request, pk)
+
+class CompetitionLeaderboardView(generics.ListAPIView):
+    """
+    SCRUM-29
+
+    GET /team1/api/competitions/<id>/leaderboard/
+
+    Returns participants of a competition ordered by rank (best first).
+    Supports pagination (global PageNumberPagination, subtask 3) and an
+    optional `?user_id=` filter to look up a single participant's row
+    (subtask 3: filtering).
+    Open to any authenticated participant, not just coaches.
+    """
+
+    authentication_classes = []
+    serializer_class = CompetitionLeaderboardSerializer
+
+    def get_queryset(self):
+        competition_id = self.kwargs["pk"]
+
+        get_object_or_404(Competition, competition_id=competition_id, is_deleted=False)
+
+        queryset = CompetitionParticipant.objects.filter(
+            competition_id=competition_id
+        ).order_by("rank", "-total_score")
+
+        user_id = self.request.query_params.get("user_id")
+        if user_id is not None:
+            queryset = queryset.filter(user_id=user_id)
+
+        return queryset
