@@ -9,7 +9,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <footer className="site-footer">
-        <p>PolyLife — سیستم چالش‌های ورزشی</p>
+        <p>PolyLife — چالش‌های ورزشی و مسابقات رقابتی</p>
       </footer>
     </div>
   );

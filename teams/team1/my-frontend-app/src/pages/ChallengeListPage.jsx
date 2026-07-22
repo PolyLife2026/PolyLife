@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchChallenges } from '../services/challenges';
 import ChallengeCard from '../components/challenges/ChallengeCard';
 import ChallengeFilters from '../components/challenges/ChallengeFilters';
-import FlowDiagram from '../components/challenges/FlowDiagram';
+import SystemFlowDiagram from '../components/shared/SystemFlowDiagram';
 import BrandDivider from '../components/layout/BrandDivider';
 import { parseApiError } from '../utils/formatters';
 
@@ -43,7 +43,7 @@ export default function ChallengeListPage() {
         </p>
       </section>
 
-      <FlowDiagram />
+      <SystemFlowDiagram />
 
       <ChallengeFilters filters={filters} onChange={setFilters} />
 

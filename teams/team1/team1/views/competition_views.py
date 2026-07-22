@@ -8,7 +8,11 @@ from django.views.decorators.csrf import csrf_exempt
 
 from django.shortcuts import get_object_or_404
 from ..models import Competition, CompetitionParticipant
-from ..serializers.competition import CompetitionSerializer
+from ..serializers.competition import (
+    CompetitionSerializer,
+    CompetitionListSerializer,
+    CompetitionDetailSerializer,
+)
 from ..serializers.competition_result import CompetitionResultSerializer
 from ..serializers.competition_leaderboard import CompetitionLeaderboardSerializer
 from ..services.competition_ranking import recalculate_competition_rankings
@@ -16,19 +20,26 @@ from .permissions import IsCoach
 
 
 @method_decorator(csrf_exempt, name="dispatch")
-class CompetitionCreateView(generics.CreateAPIView):
+class CompetitionListCreateView(generics.ListCreateAPIView):
     """
-    SCRUM-124: POST /team1/api/competitions/
-
-    Creates a new competition.
-    Only coaches/admins may create competitions.
+    GET /team1/api/competitions/ — list competitions
+    POST /team1/api/competitions/ — create (coach only)
     """
 
-    queryset = Competition.objects.all()
-    serializer_class = CompetitionSerializer
+    authentication_classes = []
 
-    authentication_classes = []  # for test purposes only
-    permission_classes = [IsCoach]
+    def get_queryset(self):
+        return Competition.objects.filter(is_deleted=False).order_by("-date_start")
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return CompetitionSerializer
+        return CompetitionListSerializer
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsCoach()]
+        return []
 
     def perform_create(self, serializer):
         user_id = self.request.META.get("HTTP_X_USER_ID")
@@ -37,6 +48,18 @@ class CompetitionCreateView(generics.CreateAPIView):
             raise PermissionDenied("Missing user id in headers")
 
         serializer.save(created_by=user_id)
+
+
+class CompetitionDetailView(generics.RetrieveAPIView):
+    """GET /team1/api/competitions/<id>/ — competition details"""
+
+    lookup_field = "competition_id"
+    authentication_classes = []
+    permission_classes = []
+    serializer_class = CompetitionDetailSerializer
+
+    def get_queryset(self):
+        return Competition.objects.filter(is_deleted=False)
 
 
 class CompetitionJoinView(APIView):

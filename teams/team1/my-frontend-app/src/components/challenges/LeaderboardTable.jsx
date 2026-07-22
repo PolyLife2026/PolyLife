@@ -29,7 +29,7 @@ export default function LeaderboardTable({ entries, loading }) {
           {entries.map((entry) => (
             <tr
               key={`${entry.user_id}-${entry.rank}`}
-              className={entry.user_id === userId ? 'leaderboard-row--me' : ''}
+              className={Number(entry.user_id) === Number(userId) ? 'leaderboard-row--me' : ''}
             >
               <td>
                 <span className={`rank-badge rank-badge--${entry.rank <= 3 ? entry.rank : 'other'}`}>
@@ -38,7 +38,7 @@ export default function LeaderboardTable({ entries, loading }) {
               </td>
               <td>
                 کاربر #{entry.user_id}
-                {entry.user_id === userId && <span className="me-tag">شما</span>}
+                {Number(entry.user_id) === Number(userId) && <span className="me-tag">شما</span>}
               </td>
               <td>{Number(entry.score).toFixed(1)}%</td>
             </tr>

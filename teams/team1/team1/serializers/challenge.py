@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ..models import Challenge
+from ..models import Challenge, ParticipantChallenge
 from decimal import Decimal
 from django.core.validators import MinValueValidator
 
@@ -35,8 +35,7 @@ class ChallengeDetailSerializer(serializers.ModelSerializer):
     Serializer for retrieving challenge details (Public fields only).
     Excluded internal fields like is_deleted, created_at, updated_at.
     """
-    # a custom method field for participant count
-    # participant_count = serializers.SerializerMethodField()
+    is_joined = serializers.SerializerMethodField()
 
     class Meta:
         model = Challenge
@@ -52,12 +51,24 @@ class ChallengeDetailSerializer(serializers.ModelSerializer):
             'date_start', 
             'date_end', 
             'status', 
-            'created_by' ,
-            # 'participant_count'
+            'created_by',
+            'is_joined',
         ]
         
         # Ensure it's read-only since this is for a GET request
         read_only_fields = fields
+
+    def get_is_joined(self, obj):
+        request = self.context.get('request')
+        if not request:
+            return False
+        user_id = request.META.get('HTTP_X_USER_ID')
+        if not user_id:
+            return False
+        return ParticipantChallenge.objects.filter(
+            challenge=obj,
+            user_id=int(user_id),
+        ).exists()
 
     # def get_participant_count(self, obj):
     #     # NOTE: If you set a 'related_name' in your Participant model's 

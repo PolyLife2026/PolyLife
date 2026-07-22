@@ -14,8 +14,15 @@ export default function Header() {
           <BrandDivider compact />
         </Link>
         <nav className="main-nav">
+          <Link to="/">خانه</Link>
           <Link to="/challenges">چالش‌ها</Link>
-          {isCoach && <Link to="/challenges/new">ایجاد چالش</Link>}
+          <Link to="/competitions">مسابقات</Link>
+          {isCoach && (
+            <>
+              <Link to="/challenges/new">ایجاد چالش</Link>
+              <Link to="/competitions/new">ایجاد مسابقه</Link>
+            </>
+          )}
         </nav>
       </div>
 

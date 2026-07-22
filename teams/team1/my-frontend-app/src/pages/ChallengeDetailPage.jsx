@@ -20,22 +20,6 @@ import {
 } from '../utils/constants';
 import { formatDateTime, parseApiError } from '../utils/formatters';
 
-const JOINED_KEY = 'polylife-joined-challenges';
-
-function getJoinedSet() {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(JOINED_KEY) ?? '[]'));
-  } catch {
-    return new Set();
-  }
-}
-
-function markJoined(id) {
-  const set = getJoinedSet();
-  set.add(id);
-  localStorage.setItem(JOINED_KEY, JSON.stringify([...set]));
-}
-
 export default function ChallengeDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -44,12 +28,13 @@ export default function ChallengeDetailPage() {
   const [challenge, setChallenge] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [myRank, setMyRank] = useState(null);
-  const [joined, setJoined] = useState(() => getJoinedSet().has(Number(id)));
   const [loading, setLoading] = useState(true);
   const [joinLoading, setJoinLoading] = useState(false);
   const [error, setError] = useState('');
   const [joinError, setJoinError] = useState('');
   const [lbLoading, setLbLoading] = useState(false);
+
+  const joined = Boolean(challenge?.is_joined);
 
   const loadLeaderboard = useCallback(async () => {
     setLbLoading(true);
@@ -84,7 +69,7 @@ export default function ChallengeDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [id, loadLeaderboard, loadMyRank]);
+  }, [id, userId, loadLeaderboard, loadMyRank]);
 
   useEffect(() => {
     loadAll();
@@ -104,13 +89,11 @@ export default function ChallengeDetailPage() {
     setJoinLoading(true);
     try {
       await joinChallenge(id);
-      setJoined(true);
-      markJoined(Number(id));
+      setChallenge((prev) => ({ ...prev, is_joined: true }));
     } catch (err) {
       const msg = parseApiError(err);
       if (msg.includes('already joined')) {
-        setJoined(true);
-        markJoined(Number(id));
+        setChallenge((prev) => ({ ...prev, is_joined: true }));
       } else {
         setJoinError(msg);
       }
