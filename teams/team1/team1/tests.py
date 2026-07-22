@@ -9,8 +9,8 @@ from .models import CompetitionParticipant
 from datetime import timedelta
 from .models import ParticipantScore
 from .models import Activity, Challenge, Competition, ParticipantChallenge
-
-
+from django.test import TestCase
+from .services.final_ranking import calculate_final_rankings
 class ChallengeCreateAPITest(APITestCase):
 
     def setUp(self):
@@ -1300,3 +1300,97 @@ class CompetitionFinalRankingsAPITest(APITestCase):
         response = self.client.get("/team1/api/competitions/99999/final-rankings/")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+class FinalRankingTests(TestCase):
+
+    def setUp(self):
+        self.challenge = Challenge.objects.create(
+            title="Ranking Test",
+            description="test",
+            activity_type=Challenge.ActivityType.RUNNING,
+            difficulty=Challenge.Difficulty.EASY,
+            value_goal=Decimal("100"),
+            goal_unit=Challenge.GoalUnit.KM,
+            date_start=timezone.now(),
+            date_end=timezone.now(),
+            status=Challenge.Status.ENDED,
+            created_by=1,
+        )
+
+    def create_participant(self, user_id, score):
+        ParticipantChallenge.objects.create(
+            challenge=self.challenge,
+            user_id=user_id,
+        )
+
+        ParticipantScore.objects.create(
+            challenge=self.challenge,
+            user_id=user_id,
+            score=Decimal(score),
+        )
+
+    def test_final_ranking_order(self):
+        """
+        Higher score should receive better final rank.
+        """
+
+        self.create_participant(1, "90")
+        self.create_participant(2, "80")
+        self.create_participant(3, "70")
+
+        calculate_final_rankings(self.challenge.challenge_id)
+
+        self.assertEqual(
+            ParticipantChallenge.objects.get(user_id=1).final_rank,
+            1,
+        )
+
+        self.assertEqual(
+            ParticipantChallenge.objects.get(user_id=2).final_rank,
+            2,
+        )
+
+        self.assertEqual(
+            ParticipantChallenge.objects.get(user_id=3).final_rank,
+            3,
+        )
+
+    def test_tie_breaking_by_user_id(self):
+        """
+        Equal scores should be ordered by smaller user_id.
+        """
+
+        self.create_participant(50, "100")
+        self.create_participant(20, "100")
+        self.create_participant(70, "90")
+
+        calculate_final_rankings(self.challenge.challenge_id)
+
+        self.assertEqual(
+            ParticipantChallenge.objects.get(user_id=20).final_rank,
+            1,
+        )
+
+        self.assertEqual(
+            ParticipantChallenge.objects.get(user_id=50).final_rank,
+            2,
+        )
+
+        self.assertEqual(
+            ParticipantChallenge.objects.get(user_id=70).final_rank,
+            3,
+        )
+
+    def test_final_rank_saved_in_database(self):
+        """
+        Final rank must be persisted.
+        """
+
+        self.create_participant(10, "50")
+        self.create_participant(11, "40")
+
+        calculate_final_rankings(self.challenge.challenge_id)
+
+        participant = ParticipantChallenge.objects.get(user_id=10)
+
+        self.assertIsNotNone(participant.final_rank)
+        self.assertEqual(participant.final_rank, 1)

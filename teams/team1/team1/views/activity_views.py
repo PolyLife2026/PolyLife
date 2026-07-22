@@ -1,19 +1,25 @@
 from django.utils import timezone
+
 from rest_framework import generics
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from ..models import Activity, Challenge
 from ..serializers.activity import ActivitySerializer
+from ..services.final_ranking import calculate_final_rankings
 
 
 class ActivityCreateView(generics.CreateAPIView):
     """
     POST /team1/api/activities/
+
     Lets a logged-in participant submit a daily activity for a challenge.
     The request body should contain challenge, value, activity_date and
-    (optionally) note in JSON format. user_id is NOT read from the body —
+    (optionally) note in JSON format.
+
+    user_id is NOT read from the body —
     it is taken from the X-User-Id header set by the Gateway.
     """
+
     queryset = Activity.objects.all()
     serializer_class = ActivitySerializer
 
@@ -21,7 +27,7 @@ class ActivityCreateView(generics.CreateAPIView):
     permission_classes = []
 
     def perform_create(self, serializer):
-        # Get the user id from the request headers.
+
         user_id = self.request.META.get("HTTP_X_USER_ID")
 
         if not user_id:
@@ -31,20 +37,26 @@ class ActivityCreateView(generics.CreateAPIView):
 
         # Automatically close challenge if it has expired
         if (
-                challenge.status == Challenge.Status.STARTED
-                and challenge.date_end <= timezone.now()
+            challenge.status == Challenge.Status.STARTED
+            and challenge.date_end <= timezone.now()
         ):
             challenge.status = Challenge.Status.ENDED
             challenge.save(update_fields=["status"])
 
+            # SCRUM-23
+            calculate_final_rankings(challenge.challenge_id)
+
             raise ValidationError({
-                "challenge": "This challenge has ended and no longer accepts activities."
+                "challenge": (
+                    "This challenge has ended and no longer accepts activities."
+                )
             })
 
         serializer.save(user_id=user_id)
 
 
 class ActivityUpdateView(generics.UpdateAPIView):
+
     queryset = Activity.objects.filter(is_deleted=False)
     serializer_class = ActivitySerializer
 
@@ -54,6 +66,7 @@ class ActivityUpdateView(generics.UpdateAPIView):
     lookup_field = "activity_id"
 
     def perform_update(self, serializer):
+
         user_id = self.request.META.get("HTTP_X_USER_ID")
 
         if not user_id:
@@ -71,14 +84,19 @@ class ActivityUpdateView(generics.UpdateAPIView):
 
         # Automatically close challenge if it has expired
         if (
-                challenge.status == Challenge.Status.STARTED
-                and challenge.date_end <= timezone.now()
+            challenge.status == Challenge.Status.STARTED
+            and challenge.date_end <= timezone.now()
         ):
             challenge.status = Challenge.Status.ENDED
             challenge.save(update_fields=["status"])
 
+            # SCRUM-23
+            calculate_final_rankings(challenge.challenge_id)
+
             raise ValidationError({
-                "challenge": "This challenge has ended and activities can no longer be edited."
+                "challenge": (
+                    "This challenge has ended and activities can no longer be edited."
+                )
             })
 
         # Only allow editing on the same day
