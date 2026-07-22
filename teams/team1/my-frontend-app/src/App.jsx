@@ -1,27 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import api from './services/api';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import Layout from './components/layout/Layout';
+import ChallengeListPage from './pages/ChallengeListPage';
+import ChallengeDetailPage from './pages/ChallengeDetailPage';
+import CreateChallengePage from './pages/CreateChallengePage';
+import EditChallengePage from './pages/EditChallengePage';
 
-function App() {
-    const [status, setStatus] = useState('Checking backend...');
-
-    useEffect(() => {
-        // Example call to team1 backend (e.g., competitions list)
-        api.get('/competitions/')
-            .then(response => {
-                setStatus('Connected to PolyLife Backend!');
-            })
-            .catch(error => {
-                setStatus('Backend not reachable yet.');
-                console.error(error);
-            });
-    }, []);
-
-    return (
-        <div>
-            <h1>PolyLife Frontend</h1>
-            <p>Backend Status: {status}</p>
-        </div>
-    );
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Layout />}>
+        <Route index element={<Navigate to="/challenges" replace />} />
+        <Route path="challenges" element={<ChallengeListPage />} />
+        <Route path="challenges/new" element={<CreateChallengePage />} />
+        <Route path="challenges/:id/edit" element={<EditChallengePage />} />
+        <Route path="challenges/:id" element={<ChallengeDetailPage />} />
+      </Route>
+    </Routes>
+  );
 }
-
-export default App;

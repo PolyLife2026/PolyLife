@@ -82,10 +82,13 @@ class ChallengeListCreateView(generics.ListCreateAPIView):
 class ChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     # Remove queryset = Challenge.objects.all() and use get_queryset instead
-    
-    permission_classes = [IsCoach, IsChallengeCreator]
 
     lookup_field = 'challenge_id'
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return []
+        return [IsCoach(), IsChallengeCreator()]
 
     def get_queryset(self):
         # 1. Fix soft-delete issue: Only return challenges that are not deleted

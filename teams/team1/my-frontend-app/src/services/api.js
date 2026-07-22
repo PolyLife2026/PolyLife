@@ -1,15 +1,18 @@
 import axios from 'axios';
 
-// Configure based on your Vite proxy or Django backend URL
 const api = axios.create({
-    baseURL: 'http://localhost:9101/team1/api',
-    headers: {
-        'Content-Type': 'application/json',
-        // PolyLife custom header-based auth required for microservices
-        // TODO: Replace static values with dynamic state/context later
-        'X-User-Id': '1',
-        'Role': 'ADMIN' 
-    }
+  baseURL: '/team1/api',
+  headers: { 'Content-Type': 'application/json' },
 });
+
+export function setAuthHeaders(userId, role) {
+  api.defaults.headers.common['X-User-Id'] = String(userId);
+  api.defaults.headers.common['X-User-Role'] = role;
+}
+
+export function clearAuthHeaders() {
+  delete api.defaults.headers.common['X-User-Id'];
+  delete api.defaults.headers.common['X-User-Role'];
+}
 
 export default api;
