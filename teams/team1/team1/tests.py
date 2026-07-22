@@ -2,12 +2,13 @@ from decimal import Decimal
 from datetime import timedelta
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.timezone import now
 from rest_framework import status
 from rest_framework.test import APITestCase
 from .models import CompetitionParticipant
 from datetime import timedelta
 from .models import ParticipantScore
-from .models import Activity, Challenge, Competition
+from .models import Activity, Challenge, Competition, ParticipantChallenge
 
 
 class ChallengeCreateAPITest(APITestCase):
@@ -309,6 +310,83 @@ class ChallengeFilterTests(APITestCase):
         # Assuming pagination is StandardResultsSetPagination, check 'results'
         challenge_ids = [c['challenge_id'] for c in response.data['results']]
         self.assertEqual(len(challenge_ids), 2)
+
+class ChallengeJoinTests(APITestCase):
+    
+    def setUp(self):
+
+        now = timezone.now()
+        
+        # Create an active challenge
+        self.active_challenge = Challenge.objects.create(
+            title="Active Challenge",
+            description="Hard mountain trail",
+            created_by=2,
+            activity_type=Challenge.ActivityType.CYCLING,  
+            status="started",
+            is_deleted=False,
+            difficulty=Challenge.Difficulty.HARD,
+            value_goal=80,       
+            date_start=now + timedelta(days=10),
+            date_end=now + timedelta(days=15)
+        )
+        
+        # Create an inactive (ended) challenge
+        self.ended_challenge = Challenge.objects.create(
+            title="Ended Challenge",
+            description="Hard mountain trail",
+            created_by=2,
+            activity_type=Challenge.ActivityType.CYCLING, 
+            status="ended",
+            is_deleted=False,
+            difficulty=Challenge.Difficulty.HARD,
+            value_goal=80,       
+            date_start=now + timedelta(days=10),
+            date_end=now + timedelta(days=15)
+        )
+        
+        # Dummy user ID from header
+        self.user_id = 12345
+
+    def test_successful_join(self):
+        url = reverse('team1:challenge-join', kwargs={'pk': self.active_challenge.pk})
+        
+        # Pass the header as HTTP_X_USER_ID
+        response = self.client.post(url, HTTP_X_USER_ID=self.user_id)
+        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(ParticipantChallenge.objects.count(), 1)
+        
+        # Verify correct assignment
+        participant = ParticipantChallenge.objects.first()
+        self.assertEqual(participant.user_id, self.user_id)
+        self.assertEqual(participant.challenge, self.active_challenge)
+
+    def test_duplicate_join_rejected(self):
+        # Insert initial record manually
+        ParticipantChallenge.objects.create(
+            challenge=self.active_challenge,
+            user_id=self.user_id
+        )
+        
+        url = reverse('team1:challenge-join', kwargs={'pk': self.active_challenge.pk})
+        response = self.client.post(url, HTTP_X_USER_ID=self.user_id)
+        
+        # Should fail due to UniqueConstraint on (challenge, user_id)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        # Ensure count remains 1
+        self.assertEqual(ParticipantChallenge.objects.count(), 1)
+
+    def test_join_inactive_challenge_rejected(self):
+        url = reverse('team1:challenge-join', kwargs={'pk': self.ended_challenge.pk})
+        response = self.client.post(url, HTTP_X_USER_ID=self.user_id)
+        
+        # Depending on your view logic, it might return 400 Bad Request or 404 Not Found
+        self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND])
+        
+        # Ensure no record was created
+        self.assertEqual(ParticipantChallenge.objects.count(), 0)
 
 
 class ActivityCreateTests(APITestCase):

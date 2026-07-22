@@ -154,20 +154,19 @@ class ChallengeJoinView(APIView):
         # Get the active challenge
         challenge = get_object_or_404(Challenge, pk=pk, is_deleted=False)
 
-        # ---------------------------------------------------------
-        # TODO: SCRUM-80 - Validate: status == CREATED, capacity, etc.
-        # ---------------------------------------------------------
+        allowed_statuses = ['created', 'started']  # allowed statuses for joining
+        if challenge.status not in allowed_statuses:
+            return Response(
+                {"error": f"Cannot join challenge. Current status is {challenge.status}."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
-        # ---------------------------------------------------------
-        # TODO: SCRUM-79 & SCRUM-80 - Check duplicate join
-        # ---------------------------------------------------------
+        if ParticipantChallenge.objects.filter(challenge=challenge, user_id=user_id).exists():
+            return Response(
+                {"error": "User has already joined this challenge."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # ---------------------------------------------------------
-        # TODO: SCRUM-79 & SCRUM-82 - Create ParticipantChallenge record
-        # ParticipantChallenge.objects.create(
-        #     challenge=challenge, user_id=user_id, progress_current=0, score_total=0
-        # )
-        # ---------------------------------------------------------
         ParticipantChallenge.objects.create(
             challenge=challenge,
             user_id=user_id
