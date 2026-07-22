@@ -21,15 +21,16 @@ def distribute_rewards(challenge_id):
         .order_by("final_rank")
     )
 
+    # get_or_create as a safety net: the 0009_seed_reward_badges migration
+    # is the real fix (see that migration for why), this just prevents a
+    # crash if these rows are ever missing for any other reason.
     reward_map = {
-        Reward.BadgeType.TOP_1:
-            Reward.objects.get(badge_type=Reward.BadgeType.TOP_1),
-
-        Reward.BadgeType.TOP_3:
-            Reward.objects.get(badge_type=Reward.BadgeType.TOP_3),
-
-        Reward.BadgeType.TOP_10:
-            Reward.objects.get(badge_type=Reward.BadgeType.TOP_10),
+        badge_type: Reward.objects.get_or_create(badge_type=badge_type)[0]
+        for badge_type in (
+            Reward.BadgeType.TOP_1,
+            Reward.BadgeType.TOP_3,
+            Reward.BadgeType.TOP_10,
+        )
     }
 
     for participant in participants:

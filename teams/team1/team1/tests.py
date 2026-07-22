@@ -1317,19 +1317,19 @@ class FinalRankingTests(TestCase):
 
     def setUp(self):
 
-        Reward.objects.create(
+        Reward.objects.update_or_create(
             badge_type=Reward.BadgeType.TOP_1,
-            description="Gold Badge",
+            defaults={"description": "Gold Badge"},
         )
 
-        Reward.objects.create(
+        Reward.objects.update_or_create(
             badge_type=Reward.BadgeType.TOP_3,
-            description="Silver Badge",
+            defaults={"description": "Silver Badge"},
         )
 
-        Reward.objects.create(
+        Reward.objects.update_or_create(
             badge_type=Reward.BadgeType.TOP_10,
-            description="Bronze Badge",
+            defaults={"description": "Bronze Badge"},
         )
 
         self.challenge = Challenge.objects.create(
@@ -1441,15 +1441,15 @@ class RewardDistributionTests(TestCase):
             created_by=1,
         )
 
-        Reward.objects.create(
+        Reward.objects.get_or_create(
             badge_type=Reward.BadgeType.TOP_1
         )
 
-        Reward.objects.create(
+        Reward.objects.get_or_create(
             badge_type=Reward.BadgeType.TOP_3
         )
 
-        Reward.objects.create(
+        Reward.objects.get_or_create(
             badge_type=Reward.BadgeType.TOP_10
         )
 
@@ -1555,9 +1555,9 @@ class ChallengeResultTests(TestCase):
             score=Decimal("94.50"),
         )
 
-        reward = Reward.objects.create(
+        reward, _ = Reward.objects.update_or_create(
             badge_type=Reward.BadgeType.TOP_3,
-            description="Top 3 Badge",
+            defaults={"description": "Top 3 Badge"},
         )
 
         UserBadge.objects.create(
