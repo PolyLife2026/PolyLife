@@ -2,6 +2,7 @@ from rest_framework import serializers
 from ..models import Challenge
 from decimal import Decimal
 from django.core.validators import MinValueValidator
+from ..models import UserBadge, Reward
 
 class ChallengeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -87,4 +88,20 @@ class LeaderboardSerializer(serializers.Serializer):
     score = serializers.DecimalField(
         max_digits=8,
         decimal_places=2,
+    )
+
+class ChallengeResultSerializer(serializers.Serializer):
+    final_rank = serializers.IntegerField()
+
+    total_score = serializers.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+    )
+
+    badges = serializers.ListField(
+        child=serializers.CharField()
+    )
+
+    rewards = serializers.ListField(
+        child=serializers.CharField()
     )

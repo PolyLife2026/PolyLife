@@ -32,6 +32,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ChallengeFilter
 from django.shortcuts import get_object_or_404
 
+from ..models import UserBadge, Reward
+from ..serializers.challenge import ChallengeResultSerializer
 
 # Create your views here.
 
@@ -255,5 +257,89 @@ class ChallengeLeaderboardView(generics.GenericAPIView):
             rank += 1
 
         serializer = self.get_serializer(data, many=True)
+
+        return Response(serializer.data)
+class MyChallengeResultView(generics.GenericAPIView):
+    """
+    GET /api/challenges/<challenge_id>/my-results/
+
+    Returns the participant's final result after the challenge ends.
+    """
+
+    serializer_class = ChallengeResultSerializer
+
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request, challenge_id):
+
+        user_id = request.META.get("HTTP_X_USER_ID")
+
+        if not user_id:
+            raise PermissionDenied("Missing user id in headers.")
+
+        try:
+            challenge = Challenge.objects.get(
+                challenge_id=challenge_id,
+                is_deleted=False,
+            )
+        except Challenge.DoesNotExist:
+            return Response(
+                {"detail": "Challenge not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if challenge.status != Challenge.Status.ENDED:
+            return Response(
+                {"detail": "Challenge is not completed yet."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            participant = ParticipantChallenge.objects.get(
+                challenge=challenge,
+                user_id=user_id,
+            )
+
+            score = ParticipantScore.objects.get(
+                challenge=challenge,
+                user_id=user_id,
+            )
+
+        except (
+            ParticipantChallenge.DoesNotExist,
+            ParticipantScore.DoesNotExist,
+        ):
+            return Response(
+                {"detail": "Participant not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        user_badges = (
+            UserBadge.objects
+            .filter(
+                challenge=challenge,
+                user_id=user_id,
+            )
+            .select_related("reward")
+        )
+
+        badges = [
+            badge.reward.badge_type
+            for badge in user_badges
+        ]
+
+        rewards = [
+            badge.reward.description
+            for badge in user_badges
+            if badge.reward.description
+        ]
+
+        serializer = self.get_serializer({
+            "final_rank": participant.final_rank,
+            "total_score": score.score,
+            "badges": badges,
+            "rewards": rewards,
+        })
 
         return Response(serializer.data)

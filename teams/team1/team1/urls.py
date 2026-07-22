@@ -8,7 +8,8 @@ from .views.challenge_views import (
     ChallengeLeaderboardView,
     ChallengeJoinView,
     MyRankView,
-) 
+    MyChallengeResultView,   # <-- اضافه شد
+)
 from .views.competition_views import (
     CompetitionCreateView,
     CompetitionJoinView,
@@ -34,12 +35,25 @@ urlpatterns = [
         name="challenge-detail",
     ),
     path(
-        'api/challenges/<int:pk>/join/',
+        "api/challenges/<int:pk>/join/",
         ChallengeJoinView.as_view(),
-        name='challenge-join'
+        name="challenge-join",
     ),
-
-
+    path(
+        "api/challenges/<int:challenge_id>/leaderboard/",
+        ChallengeLeaderboardView.as_view(),
+        name="challenge-leaderboard",
+    ),
+    path(
+        "api/challenges/<int:challenge_id>/my-rank/",
+        MyRankView.as_view(),
+        name="my-rank",
+    ),
+    path(
+        "api/challenges/<int:challenge_id>/my-results/",
+        MyChallengeResultView.as_view(),
+        name="my-results",
+    ),
 
     # Activity
     path(
@@ -78,15 +92,5 @@ urlpatterns = [
         "api/competitions/<int:pk>/final-rankings/",
         CompetitionFinalRankingsView.as_view(),
         name="competition-final-rankings",
-    ),
-    path(
-        "api/challenges/<int:challenge_id>/leaderboard/",
-        ChallengeLeaderboardView.as_view(),
-        name="challenge-leaderboard",
-    ),
-    path(
-        "api/challenges/<int:challenge_id>/my-rank/",
-        MyRankView.as_view(),
-        name="my-rank",
     ),
 ]

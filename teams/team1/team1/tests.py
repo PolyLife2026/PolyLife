@@ -1,18 +1,26 @@
 from decimal import Decimal
 from datetime import timedelta
+
+from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.timezone import now
+
 from rest_framework import status
-from rest_framework.test import APITestCase
-from .models import CompetitionParticipant
-from datetime import timedelta
-from .models import ParticipantScore
-from .models import Activity, Challenge, Competition, ParticipantChallenge
-from django.test import TestCase
+from rest_framework.test import APITestCase, APIClient
+
+from .models import (
+    Activity,
+    Challenge,
+    Competition,
+    CompetitionParticipant,
+    ParticipantChallenge,
+    ParticipantScore,
+    Reward,
+    UserBadge,
+)
+
 from .services.final_ranking import calculate_final_rankings
-from .models import Reward
-from .models import UserBadge
 
 class ChallengeCreateAPITest(APITestCase):
 
@@ -1303,9 +1311,27 @@ class CompetitionFinalRankingsAPITest(APITestCase):
         response = self.client.get("/team1/api/competitions/99999/final-rankings/")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
 class FinalRankingTests(TestCase):
 
     def setUp(self):
+
+        Reward.objects.create(
+            badge_type=Reward.BadgeType.TOP_1,
+            description="Gold Badge",
+        )
+
+        Reward.objects.create(
+            badge_type=Reward.BadgeType.TOP_3,
+            description="Silver Badge",
+        )
+
+        Reward.objects.create(
+            badge_type=Reward.BadgeType.TOP_10,
+            description="Bronze Badge",
+        )
+
         self.challenge = Challenge.objects.create(
             title="Ranking Test",
             description="test",
@@ -1498,3 +1524,90 @@ class RewardDistributionTests(TestCase):
             UserBadge.objects.filter(user_id=11).count(),
             0,
         )
+
+class ChallengeResultTests(TestCase):
+
+    def setUp(self):
+        self.client = APIClient()
+
+        self.challenge = Challenge.objects.create(
+            title="Challenge Result Test",
+            description="test",
+            activity_type=Challenge.ActivityType.RUNNING,
+            difficulty=Challenge.Difficulty.EASY,
+            value_goal=Decimal("100"),
+            goal_unit=Challenge.GoalUnit.KM,
+            date_start=timezone.now(),
+            date_end=timezone.now(),
+            status=Challenge.Status.ENDED,
+            created_by=1,
+        )
+
+        ParticipantChallenge.objects.create(
+            challenge=self.challenge,
+            user_id=1,
+            final_rank=2,
+        )
+
+        ParticipantScore.objects.create(
+            challenge=self.challenge,
+            user_id=1,
+            score=Decimal("94.50"),
+        )
+
+        reward = Reward.objects.create(
+            badge_type=Reward.BadgeType.TOP_3,
+            description="Top 3 Badge",
+        )
+
+        UserBadge.objects.create(
+            challenge=self.challenge,
+            user_id=1,
+            reward=reward,
+        )
+
+    def test_my_results_success(self):
+        response = self.client.get(
+            f"/team1/api/challenges/{self.challenge.challenge_id}/my-results/",
+            HTTP_X_USER_ID="1",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["final_rank"], 2)
+        self.assertEqual(str(response.data["total_score"]), "94.50")
+
+        self.assertEqual(
+            response.data["badges"],
+            [Reward.BadgeType.TOP_3],
+        )
+
+        self.assertEqual(
+            response.data["rewards"],
+            ["Top 3 Badge"],
+        )
+
+    def test_challenge_not_completed(self):
+        self.challenge.status = Challenge.Status.STARTED
+        self.challenge.save()
+
+        response = self.client.get(
+            f"/team1/api/challenges/{self.challenge.challenge_id}/my-results/",
+            HTTP_X_USER_ID="1",
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_missing_user_header(self):
+        response = self.client.get(
+            f"/team1/api/challenges/{self.challenge.challenge_id}/my-results/",
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_participant_not_found(self):
+        response = self.client.get(
+            f"/team1/api/challenges/{self.challenge.challenge_id}/my-results/",
+            HTTP_X_USER_ID="999",
+        )
+
+        self.assertEqual(response.status_code, 404)
