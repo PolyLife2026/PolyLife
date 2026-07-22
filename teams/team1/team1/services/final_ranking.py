@@ -2,12 +2,14 @@ from django.db import transaction
 
 from ..models import ParticipantChallenge
 from ..models import ParticipantScore
+from .reward_service import distribute_rewards
+
 
 
 @transaction.atomic
 def calculate_final_rankings(challenge_id):
     """
-    Permanently assigns final rankings when a challenge ends.
+    Permanently assigns final ranks after challenge closes.
 
     Tie-breaking:
         1. Higher score
@@ -25,6 +27,7 @@ def calculate_final_rankings(challenge_id):
     updates = []
 
     for score in scores:
+
         participant = (
             ParticipantChallenge.objects
             .select_for_update()
@@ -36,13 +39,14 @@ def calculate_final_rankings(challenge_id):
 
         participant.final_rank = current_rank
         updates.append(participant)
-
         current_rank += 1
 
-    if updates:
-        ParticipantChallenge.objects.bulk_update(
-            updates,
-            ["final_rank"],
-        )
+    ParticipantChallenge.objects.bulk_update(
+        updates,
+        ["final_rank"],
+    )
+
+    # Award badges
+    distribute_rewards(challenge_id)
 
     return updates
