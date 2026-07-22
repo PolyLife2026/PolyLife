@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "django_filters",
     "store",
     "supplements",
+    "cart",
 ]
 
 MIDDLEWARE = [
