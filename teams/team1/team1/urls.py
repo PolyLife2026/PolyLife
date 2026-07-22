@@ -5,7 +5,9 @@ from .views.activity_views import ActivityCreateView, ActivityUpdateView
 from .views.challenge_views import (
     ChallengeListCreateView,
     ChallengeDetailView,
-    ChallengeLeaderboardView, MyRankView,
+    ChallengeLeaderboardView,
+    ChallengeJoinView,
+    MyRankView,
 ) 
 from .views.competition_views import (
     CompetitionCreateView,
@@ -31,6 +33,12 @@ urlpatterns = [
         ChallengeDetailView.as_view(),
         name="challenge-detail",
     ),
+    path(
+        'api/challenges/<int:pk>/join/',
+        ChallengeJoinView.as_view(),
+        name='challenge-join'
+    ),
+
 
 
     # Activity

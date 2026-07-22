@@ -2,6 +2,7 @@ from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework import viewsets
 from ..models import Challenge
+from ..models import ParticipantChallenge
 from ..serializers.challenge import ChallengeSerializer, ChallengeDetailSerializer, ChallengeListSerializer
 from .permissions import IsCoach, IsChallengeCreator 
 from rest_framework.exceptions import ValidationError
@@ -10,6 +11,7 @@ from rest_framework.response import Response
 from django.core.paginator import Paginator
 from rest_framework.response import Response
 from rest_framework import generics
+from rest_framework.views import APIView
 
 from ..models import ParticipantScore
 from ..serializers.challenge import LeaderboardSerializer
@@ -28,6 +30,7 @@ from ..serializers.challenge import LeaderboardSerializer
 
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ChallengeFilter
+from django.shortcuts import get_object_or_404
 
 
 # Create your views here.
@@ -129,6 +132,51 @@ class ChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance.save()
         
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class ChallengeJoinView(APIView):
+    def post(self, request, pk, format=None):
+        # SCRUM-81: Read user_id from X-User-Id header
+        user_id_str = request.META.get('HTTP_X_USER_ID')
+        if not user_id_str:
+            return Response(
+                {"error": "X-User-Id header is required."}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        try:
+            user_id = int(user_id_str)
+        except ValueError:
+            return Response(
+                {"error": "Invalid X-User-Id format."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get the active challenge
+        challenge = get_object_or_404(Challenge, pk=pk, is_deleted=False)
+
+        # ---------------------------------------------------------
+        # TODO: SCRUM-80 - Validate: status == CREATED, capacity, etc.
+        # ---------------------------------------------------------
+        
+        # ---------------------------------------------------------
+        # TODO: SCRUM-79 & SCRUM-80 - Check duplicate join
+        # ---------------------------------------------------------
+
+        # ---------------------------------------------------------
+        # TODO: SCRUM-79 & SCRUM-82 - Create ParticipantChallenge record
+        # ParticipantChallenge.objects.create(
+        #     challenge=challenge, user_id=user_id, progress_current=0, score_total=0
+        # )
+        # ---------------------------------------------------------
+        ParticipantChallenge.objects.create(
+            challenge=challenge,
+            user_id=user_id
+        )
+        
+        return Response(
+            {"message": "Successfully joined the challenge."}, 
+            status=status.HTTP_201_CREATED
+        )
 
     
 
