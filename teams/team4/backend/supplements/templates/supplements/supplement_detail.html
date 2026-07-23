@@ -1,0 +1,147 @@
+{% extends "store/base.html" %}
+{% block title %}اطلاعات علمی مکمل — PolyLife{% endblock %}
+
+{% block extra_css %}
+.sup-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid var(--gray);
+  padding: 2rem;
+  max-width: 780px;
+  margin: 0 auto;
+}
+.sup-header { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem; }
+.sup-icon {
+  width: 70px; height: 70px;
+  background: var(--p-vlight);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.2rem;
+  flex-shrink: 0;
+}
+.sup-title   { font-size: 1.4rem; font-weight: 800; }
+.sup-sci     { color: #666; font-size: .88rem; font-style: italic; margin-top: .2rem; }
+.info-section { margin-bottom: 1.2rem; }
+.info-label {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: .3rem;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+.info-text {
+  background: var(--p-vlight);
+  border-right: 3px solid var(--primary);
+  border-radius: 0 8px 8px 0;
+  padding: .7rem 1rem;
+  line-height: 1.75;
+  color: #333;
+  font-size: .9rem;
+}
+.info-text.warn {
+  background: #fff3cd;
+  border-right-color: #f39c12;
+  color: #7d5a00;
+}
+.info-text.side {
+  background: #fde8e8;
+  border-right-color: #e74c3c;
+  color: #7b1010;
+}
+{% endblock %}
+
+{% block content %}
+<div id="sup-content"><div class="spinner"></div></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const pk = window.location.pathname.split('/').filter(Boolean).pop();
+
+async function loadSupplement() {
+  const el = document.getElementById('sup-content');
+  try {
+    const r = await fetch(`/api/supplements/${pk}/`);
+    if (!r.ok) { el.innerHTML = '<p class="alert alert-error">مکمل یافت نشد</p>'; return; }
+    const s = await r.json();
+    document.title = `${s.name} — PolyLife`;
+    el.innerHTML = `
+      <div class="sup-card card">
+        <div class="sup-header">
+          <div class="sup-icon">💊</div>
+          <div>
+            <h1 class="sup-title">${s.name}</h1>
+            ${s.scientific_name ? `<p class="sup-sci">${s.scientific_name}</p>` : ''}
+          </div>
+        </div>
+
+        ${s.description ? `
+        <div class="info-section">
+          <div class="info-label">📋 توضیحات</div>
+          <div class="info-text">${s.description}</div>
+        </div>` : ''}
+
+        ${s.dosage ? `
+        <div class="info-section">
+          <div class="info-label">⚖️ دوز مصرف</div>
+          <div class="info-text">${s.dosage}</div>
+        </div>` : ''}
+
+        ${s.usage_instructions ? `
+        <div class="info-section">
+          <div class="info-label">📖 نحوه مصرف</div>
+          <div class="info-text">${s.usage_instructions}</div>
+        </div>` : ''}
+
+        ${s.benefits ? `
+        <div class="info-section">
+          <div class="info-label">✅ مزایا</div>
+          <div class="info-text">${s.benefits}</div>
+        </div>` : ''}
+
+        ${s.side_effects ? `
+        <div class="info-section">
+          <div class="info-label">⚠️ عوارض احتمالی</div>
+          <div class="info-text side">${s.side_effects}</div>
+        </div>` : ''}
+
+        ${s.warnings ? `
+        <div class="info-section">
+          <div class="info-label">🚨 هشدارها</div>
+          <div class="info-text warn">${s.warnings}</div>
+        </div>` : ''}
+
+        <div style="margin-top:1.5rem;display:flex;gap:.7rem;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="goToStore()">🛒 مشاهده و خرید در فروشگاه</button>
+          <button class="btn btn-outline" onclick="history.back()">← بازگشت</button>
+        </div>
+      </div>`;
+  } catch { el.innerHTML = '<p class="alert alert-error">خطا در بارگذاری</p>'; }
+}
+
+async function goToStore() {
+  // Try to find the product linked to this supplement
+  try {
+    const r = await fetch(`/api/supplements/${pk}/buy/`);
+    if (r.ok) {
+      const d = await r.json();
+      if (d.product_id) { window.location.href = `/store/products/${d.product_id}/`; return; }
+    }
+  } catch {}
+  // fallback
+  const r = await fetch(`/api/store/products/?supplement_id=${pk}`);
+  if (r.ok) {
+    const d = await r.json();
+    const list = d.results ?? d;
+    if (list.length) { window.location.href = `/store/products/${list[0].id}/`; return; }
+  }
+  window.location.href = '/store/products/';
+}
+
+loadSupplement();
+</script>
+{% endblock %}
