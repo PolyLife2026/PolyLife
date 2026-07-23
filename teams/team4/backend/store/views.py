@@ -19,15 +19,6 @@ from rest_framework.views import APIView
 from config.permissions import IsTeam4Admin
 # from .serializers import ProductSerializer
 
-class Meta:
-    model = Product
-    fields = [
-        "category",
-        "brand",
-        "sport_type",
-        "supplement_id",
-    ]
-    
 class ProductFilter(django_filters.FilterSet):
     min_price = django_filters.NumberFilter(
         field_name="price",
@@ -44,7 +35,7 @@ class ProductFilter(django_filters.FilterSet):
 
     class Meta:
         model = Product
-        fields = ["category", "brand", "sport_type"]
+        fields = ["category", "brand", "sport_type","supplement_id"]
 
 
 class CategoryListView(generics.ListAPIView):
