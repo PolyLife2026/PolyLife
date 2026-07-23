@@ -1306,22 +1306,25 @@ class CompetitionResultAPITest(APITestCase):
 class CompetitionFinalRankingsAPITest(APITestCase):
     """SCRUM-30: finalized ranking output, including the not-ended edge case and ties."""
 
-    def _make_competition(self, comp_status):
+    def _make_competition(self, comp_status, date_end=None):
+       if date_end is None:
+        date_end = timezone.now() - timedelta(days=1)
         return Competition.objects.create(
-            title=f"Competition ({comp_status})",
-            competition_type=Competition.CompetitionType.ACTIVITY_BASED,
-            date_start=timezone.now() - timedelta(days=10),
-            date_end=timezone.now() - timedelta(days=1),
-            status=comp_status,
-            created_by=1,
-        )
+        title=f"Competition ({comp_status})",
+        competition_type=Competition.CompetitionType.ACTIVITY_BASED,
+        date_start=timezone.now() - timedelta(days=10),
+        date_end=date_end,
+        status=comp_status,
+        created_by=1,
+    )
 
     def test_final_rankings_unavailable_while_active(self):
-        competition = self._make_competition(Competition.Status.ACTIVE)
+        competition = self._make_competition(
+        Competition.Status.ACTIVE,
+        date_end=timezone.now() + timedelta(days=5),
+    )
         url = f"/team1/api/competitions/{competition.competition_id}/final-rankings/"
-
         response = self.client.get(url)
-
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(response.data["status"], Competition.Status.ACTIVE)
 
