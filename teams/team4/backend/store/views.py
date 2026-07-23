@@ -240,8 +240,9 @@ def product_share_link(request, pk):
         )
 
     product_path = f"/api/store/products/{product.pk}/"
+
     share_url = request.build_absolute_uri(
-        reverse("product-detail-page", args=[product.id])
+        product_path
     )
 
     return Response(
