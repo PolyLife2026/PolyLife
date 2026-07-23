@@ -72,7 +72,26 @@
       font-size: .7rem;
       margin-right: 3px;
     }
+    .nav-auth-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
 
+      padding: 8px 18px;
+      border-radius: 8px;
+
+      background: #f8e8c8;
+      color: #17616a;
+
+      font-size: 16px;
+      font-weight: bold;
+
+      text-decoration: none;
+      transition: 0.2s;
+    }
+    .nav-auth-btn:hover {
+        opacity: 0.85;
+    }
     /* ── Layout ─────────────────────────────────────────────────── */
     main { flex: 1; max-width: 1180px; margin: 0 auto; width: 100%; padding: 1.5rem 1rem; }
 
@@ -107,6 +126,10 @@
     .btn-secondary { background: var(--cream); color: var(--primary); }
     .btn-outline   { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
     .btn-danger    { background: #e74c3c; color: #fff; }
+    .btn-outline:hover {
+        background: var(--primary);
+        color: white;
+    }
     .btn-sm { padding: .3rem .75rem; font-size: .8rem; }
     .btn-full { width: 100%; }
 
@@ -192,7 +215,17 @@
   </style>
 </head>
 <body>
+<a id="login-link" href="/login/" class="nav-auth-btn">
+    ورود
+</a>
 
+<a id="logout-link"
+   href="#"
+   onclick="logout(); return false;"
+   class="nav-auth-btn"
+   style="display:none">
+    خروج
+</a>
 <nav class="navbar">
   <a href="/" class="navbar-logo">🏋️ PolyLife</a>
   <div class="navbar-links">
@@ -213,6 +246,20 @@
 
 <script>
 /* ── Shared helpers ─────────────────────────────────────────── */
+document.addEventListener("DOMContentLoaded", () => {
+    const token = localStorage.getItem("polylife_token");
+
+    if (token) {
+        document.getElementById("login-link").style.display = "none";
+        const username = localStorage.getItem("polylife_username");
+        const logoutLink = document.getElementById("logout-link");
+        logoutLink.style.display = "inline-block";
+
+        if (username) {
+            logoutLink.innerHTML = `خروج (${username})`;
+        }
+            }
+});
 function toast(msg, type='') {
   const box = document.getElementById('toast-box');
   const el  = document.createElement('div');
@@ -226,9 +273,56 @@ function price(n) {
   return Number(n).toLocaleString('fa-IR') + ' تومان';
 }
 
+function getAuthToken() {
+  return localStorage.getItem('polylife_token') || '';
+}
+
+function logout() {
+  localStorage.removeItem('polylife_token');
+  localStorage.removeItem('polylife_username');
+  window.location.href = '/';
+}
+
+async function authFetch(url, options = {}) {
+  const token = getAuthToken();
+
+  if (!token) {
+    const next = encodeURIComponent(
+      window.location.pathname + window.location.search
+    );
+    window.location.href = `/login/?next=${next}`;
+    throw new Error('Authentication required');
+  }
+
+  const headers = new Headers(options.headers || {});
+  headers.set('Authorization', `Bearer ${token}`);
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  if (
+    response.status === 401 ||
+    response.status === 403 ||
+    response.status === 302
+  ){
+    localStorage.removeItem('polylife_token');
+    localStorage.removeItem('polylife_username');
+
+    const next = encodeURIComponent(
+      window.location.pathname + window.location.search
+    );
+    window.location.href = `/login/?next=${next}`;
+  }
+
+  return response;
+}
 async function updateCartBadge() {
   try {
-    const r = await fetch('/api/cart/');
+    const token = getAuthToken();
+    if (!token) return;
+    const r = await authFetch('/api/cart/');
     if (!r.ok) return;
     const d = await r.json();
     const cnt = (d.items || []).length;
@@ -236,6 +330,20 @@ async function updateCartBadge() {
     if (cnt > 0) { el.textContent = cnt; el.style.display = 'inline'; }
     else          { el.style.display = 'none'; }
   } catch {}
+}
+function requireLogin() {
+    const token = localStorage.getItem("polylife_token");
+
+    if (!token) {
+        const next = encodeURIComponent(
+            window.location.pathname + window.location.search
+        );
+
+        window.location.href = `/login/?next=${next}`;
+        return false;
+    }
+
+    return true;
 }
 updateCartBadge();
 </script>

@@ -1,0 +1,64 @@
+{% extends "store/base.html" %}
+{% block title %}ورود — PolyLife{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:420px;margin:2rem auto">
+  <h2 style="margin-bottom:1rem;color:var(--primary)">ورود به PolyLife</h2>
+
+  <form id="login-form">
+    <label for="username">نام کاربری</label>
+    <input
+      id="username"
+      type="text"
+      required
+      style="width:100%;padding:.7rem;margin:.4rem 0 1rem"
+    >
+
+    <label for="password">رمز عبور</label>
+    <input
+      id="password"
+      type="password"
+      required
+      style="width:100%;padding:.7rem;margin:.4rem 0 1rem"
+    >
+
+    <button class="btn btn-primary btn-full" type="submit">
+      ورود
+    </button>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('login-form').addEventListener('submit', async event => {
+  event.preventDefault();
+
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+
+  try {
+    const response = await fetch('/core-api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password}),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.token) {
+      toast(data.error || data.detail || 'نام کاربری یا رمز عبور اشتباه است', 'err');
+      return;
+    }
+
+    localStorage.setItem('polylife_token', data.token);
+    localStorage.setItem('polylife_username', username);
+
+    const next = new URLSearchParams(window.location.search).get('next');
+    window.location.href = next || '/';
+  } catch {
+    toast('خطا در ارتباط با سرویس ورود', 'err');
+  }
+});
+</script>
+{% endblock %}
