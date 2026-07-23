@@ -16,6 +16,7 @@ from ..serializers.competition import (
 from ..serializers.competition_result import CompetitionResultSerializer
 from ..serializers.competition_leaderboard import CompetitionLeaderboardSerializer
 from ..services.competition_ranking import recalculate_competition_rankings
+from ..services.competition_lifecycle import close_if_expired
 from .permissions import IsCoach
 
 
@@ -60,6 +61,11 @@ class CompetitionDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         return Competition.objects.filter(is_deleted=False)
+
+    def get_object(self):
+        competition = super().get_object()
+        close_if_expired(competition)
+        return competition
 
 
 class CompetitionJoinView(APIView):
@@ -143,6 +149,12 @@ class CompetitionResultView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        if close_if_expired(competition):
+            return Response(
+                {"detail": "This competition has ended; results can no longer be recorded."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
         serializer = CompetitionResultSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_id = serializer.validated_data["user_id"]
@@ -199,7 +211,10 @@ class CompetitionLeaderboardView(generics.ListAPIView):
     def get_queryset(self):
         competition_id = self.kwargs["pk"]
 
-        get_object_or_404(Competition, competition_id=competition_id, is_deleted=False)
+        competition = get_object_or_404(
+            Competition, competition_id=competition_id, is_deleted=False
+        )
+        close_if_expired(competition)
 
         queryset = CompetitionParticipant.objects.filter(
             competition_id=competition_id
@@ -231,6 +246,8 @@ class CompetitionFinalRankingsView(generics.ListAPIView):
             Competition, competition_id=self.kwargs["pk"], is_deleted=False
         )
 
+        close_if_expired(competition)
+
         if competition.status != Competition.Status.FINISHED:
             return Response(
                 {
@@ -251,13 +268,12 @@ class CompetitionFinalRankingsView(generics.ListAPIView):
 class CompetitionActivateView(APIView):
     """
     BUGFIX: nothing ever transitioned a Competition from PENDING to ACTIVE
-    (or ACTIVE to FINISHED), so the result-entry form on the frontend
-    stayed permanently disabled and /final-rankings/ was permanently
-    unreachable. This gives the coach who created it manual control over
-    both transitions.
+    (or ACTIVE to FINISHED manually), so the result-entry form on the
+    frontend stayed permanently disabled and /final-rankings/ was
+    permanently unreachable. This gives the coach who created it manual
+    control over both transitions.
 
-    POST /team1/api/competitions/<id>/activate/  (pending -> active)
-    POST /team1/api/competitions/<id>/finish/    (active  -> finished)
+    POST /team1/api/competitions/<id>/activate/  (base class, not routed directly)
     """
 
     authentication_classes = []
@@ -288,6 +304,8 @@ class CompetitionActivateView(APIView):
 
 
 class CompetitionStartView(CompetitionActivateView):
+    """POST /team1/api/competitions/<id>/start/  (pending -> active)"""
+
     def post(self, request, pk):
         return self._transition(
             request, pk, Competition.Status.PENDING, Competition.Status.ACTIVE
@@ -295,6 +313,8 @@ class CompetitionStartView(CompetitionActivateView):
 
 
 class CompetitionFinishView(CompetitionActivateView):
+    """POST /team1/api/competitions/<id>/finish/  (active -> finished)"""
+
     def post(self, request, pk):
         return self._transition(
             request, pk, Competition.Status.ACTIVE, Competition.Status.FINISHED
