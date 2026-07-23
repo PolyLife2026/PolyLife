@@ -154,7 +154,7 @@ class ChallengeUpdateAPITest(APITestCase):
 
     def setUp(self):
         self.url = lambda challenge_id: reverse(
-            "team1:challenge-update",
+            "team1:challenge-detail",
             kwargs={"challenge_id": challenge_id},
         )
 
@@ -795,7 +795,7 @@ class ParticipantScoreAPITest(APITestCase):
             goal_unit="km",
             date_start=now - timedelta(days=1),
             date_end=now + timedelta(days=5),
-            status="active",
+            status="started",
             created_by=1,
         )
 
@@ -819,6 +819,9 @@ class ParticipantScoreAPITest(APITestCase):
             **headers
         )
 
+        # print("DEBUG RESPONSE DATA1:", response.data)
+
+
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         score = ParticipantScore.objects.get(
@@ -836,6 +839,8 @@ class ParticipantScoreAPITest(APITestCase):
             format="json",
             **headers
         )
+
+        # print("DEBUG RESPONSE DATA2:", response.data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -1049,7 +1054,7 @@ class ChallengeLeaderboardAPITest(APITestCase):
 
     def setUp(self):
 
-        self.url = "/team1/api/challenges/1/leaderboard/"
+        #self.url = "/team1/api/challenges/1/leaderboard/"
 
         now = timezone.now()
 
@@ -1065,6 +1070,9 @@ class ChallengeLeaderboardAPITest(APITestCase):
             status="active",
             created_by=1,
         )
+
+        self.url = f"/team1/api/challenges/{self.challenge.challenge_id}/leaderboard/"
+
 
         ParticipantScore.objects.create(
             challenge=self.challenge,
@@ -1102,7 +1110,7 @@ class MyRankAPITest(APITestCase):
 
     def setUp(self):
 
-        self.url = "/team1/api/challenges/1/my-rank/"
+        # self.url = "/team1/api/challenges/1/my-rank/"
 
         now = timezone.now()
 
@@ -1118,6 +1126,8 @@ class MyRankAPITest(APITestCase):
             status="active",
             created_by=1,
         )
+
+        self.url = f"/team1/api/challenges/{self.challenge.challenge_id}/my-rank/"
 
         ParticipantScore.objects.create(
             challenge=self.challenge,
@@ -1309,22 +1319,24 @@ class CompetitionFinalRankingsAPITest(APITestCase):
     def _make_competition(self, comp_status, date_end=None):
        if date_end is None:
         date_end = timezone.now() - timedelta(days=1)
-        return Competition.objects.create(
-        title=f"Competition ({comp_status})",
-        competition_type=Competition.CompetitionType.ACTIVITY_BASED,
-        date_start=timezone.now() - timedelta(days=10),
-        date_end=date_end,
-        status=comp_status,
-        created_by=1,
-    )
+
+       return Competition.objects.create(
+            title=f"Competition ({comp_status})",
+            competition_type=Competition.CompetitionType.ACTIVITY_BASED,
+            date_start=timezone.now() - timedelta(days=10),
+            date_end=date_end,
+            status=comp_status,
+            created_by=1,
+       )
 
     def test_final_rankings_unavailable_while_active(self):
         competition = self._make_competition(
         Competition.Status.ACTIVE,
         date_end=timezone.now() + timedelta(days=5),
-    )
+        )
         url = f"/team1/api/competitions/{competition.competition_id}/final-rankings/"
         response = self.client.get(url)
+
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(response.data["status"], Competition.Status.ACTIVE)
 
