@@ -23,4 +23,8 @@ urlpatterns = [
         views.product_share_link,
         name="product-share",
     ),
+    path(
+        "admin/products/",
+        views.AdminProductListCreateView.as_view(),
+    ),
 ]

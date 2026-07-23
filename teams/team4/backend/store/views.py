@@ -12,6 +12,11 @@ from .serializers import (
     ProductListSerializer,
 )
 
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from config.permissions import IsTeam4Admin
+# from .serializers import ProductSerializer
+
 class Meta:
     model = Product
     fields = [
@@ -105,3 +110,31 @@ def product_share_link(request, pk):
             "share_url": share_url,
         }
     )
+
+class AdminProductListCreateView(APIView):
+    permission_classes = [IsTeam4Admin]
+
+    def get(self, request):
+        products = Product.objects.all()
+        serializer = ProductDetailSerializer(
+            products,
+            many=True
+        )
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = ProductDetailSerializer(
+            data=request.data
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                serializer.data,
+                status=201
+            )
+
+        return Response(
+            serializer.errors,
+            status=400
+        )
