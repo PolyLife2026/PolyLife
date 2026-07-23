@@ -278,8 +278,14 @@ def apply_coupon(request):
 
     cart_data = build_cart_response(get_cart(user_id))
     total = Decimal(cart_data["total"])
-    discount_amount = total * coupon.discount_percent / Decimal("100")
-    final_amount = total - discount_amount
+    MONEY_QUANTUM = Decimal("0.01")
+    discount_amount = (
+        total
+        * coupon.discount_percent
+        / Decimal("100")
+    ).quantize(MONEY_QUANTUM)
+
+    final_amount = (total - discount_amount).quantize(MONEY_QUANTUM)
 
     return Response(
         {
