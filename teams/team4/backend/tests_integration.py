@@ -1,17 +1,3 @@
-"""
-Integration Tests — Team 4 (PolyLife Store)
-============================================
-این تست‌ها سناریوهای end-to-end را پوشش می‌دهند:
-  - فلوی کامل خرید (cart → checkout → invoice)
-  - ارتباط supplement ↔ store
-  - فیلترها و جستجو روی محصولات واقعی
-  - edge caseهای موجودی انبار و کد تخفیف
-
-اجرا:
-    cd teams/team4/backend
-    python manage.py test tests_integration --verbosity=2
-"""
-
 from decimal import Decimal
 
 from django.core.cache import cache
