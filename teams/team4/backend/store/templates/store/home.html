@@ -1,0 +1,141 @@
+{% extends "store/base.html" %}
+{% block title %}PolyLife — فروشگاه ورزشی{% endblock %}
+
+{% block extra_css %}
+.hero {
+  background: linear-gradient(135deg, var(--primary), #0a3438);
+  color: #fff;
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.hero h1 { font-size: 1.9rem; margin-bottom: .4rem; }
+.hero p  { opacity: .8; margin-bottom: 1.4rem; }
+.search-bar {
+  display: flex;
+  gap: .5rem;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.search-bar input {
+  flex: 1;
+  padding: .7rem 1rem;
+  border-radius: 8px;
+  border: none;
+  font-family: 'Vazirmatn', sans-serif;
+  font-size: .93rem;
+}
+.cats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: .85rem;
+  margin-bottom: 2rem;
+}
+.cat-btn {
+  background: var(--p-vlight);
+  border: 2px solid var(--p-light);
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 700;
+  font-size: .9rem;
+  text-decoration: none;
+  display: block;
+  transition: all .18s;
+}
+.cat-btn:hover { background: var(--primary); color: #fff; transform: translateY(-3px); }
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.1rem;
+}
+.prod-card { display: flex; flex-direction: column; }
+.prod-thumb {
+  height: 150px;
+  background: var(--p-vlight);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.8rem;
+  overflow: hidden;
+}
+.prod-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.prod-body { padding: .9rem; flex: 1; display: flex; flex-direction: column; gap: .35rem; }
+.prod-body h3 { font-size: .9rem; line-height: 1.4; }
+.prod-brand  { color: #777; font-size: .78rem; }
+.prod-price  { color: var(--primary); font-weight: 800; font-size: 1rem; margin-top: auto; }
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="hero">
+  <h1>🏋️ PolyLife فروشگاه ورزشی</h1>
+  <p>بهترین مکمل‌ها و تجهیزات با اطلاعات علمی دقیق</p>
+  <div class="search-bar">
+    <input id="q" type="text" placeholder="جستجو: پروتئین، کراتین، زیرانداز..." />
+    <button class="btn btn-secondary" onclick="doSearch()">جستجو</button>
+  </div>
+</div>
+
+<!-- Categories -->
+<h2 class="page-title">دسته‌بندی‌ها</h2>
+<div class="cats-grid" id="cats"><div class="spinner"></div></div>
+
+<!-- Products -->
+<h2 class="page-title">محصولات پرطرفدار</h2>
+<div class="products-grid" id="prods"><div class="spinner"></div></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('q').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+function doSearch() {
+  const q = document.getElementById('q').value.trim();
+  window.location.href = q
+    ? `/store/products/?search=${encodeURIComponent(q)}`
+    : '/store/products/';
+}
+
+async function loadCats() {
+  const el = document.getElementById('cats');
+  try {
+    const r = await fetch('/api/store/categories/');
+    const d = await r.json();
+    const list = d.results ?? d;
+    el.innerHTML = list.length
+      ? list.map(c => `<a href="/store/products/?category=${c.id}" class="cat-btn">📦 ${c.name}</a>`).join('')
+      : '<p class="text-muted">دسته‌بندی‌ای موجود نیست</p>';
+  } catch { el.innerHTML = '<p class="alert alert-error">خطا در بارگذاری</p>'; }
+}
+
+async function loadProds() {
+  const el = document.getElementById('prods');
+  try {
+    const r = await fetch('/api/store/products/?ordering=-rating&page_size=8');
+    const d = await r.json();
+    const list = d.results ?? d;
+    el.innerHTML = list.length
+      ? list.map(p => `
+          <div class="card prod-card">
+            <div class="prod-thumb">
+              ${p.image_url ? `<img src="${p.image_url}" alt="${p.name}">` : '🏋️'}
+            </div>
+            <div class="prod-body">
+              <h3>${p.name}</h3>
+              <span class="prod-brand">${p.brand || ''}</span>
+              <span class="prod-price">${price(p.price)}</span>
+              <a href="/store/products/${p.id}/" class="btn btn-primary btn-sm mt-1">مشاهده محصول</a>
+            </div>
+          </div>`).join('')
+      : '<p class="text-muted">محصولی موجود نیست</p>';
+  } catch { el.innerHTML = '<p class="alert alert-error">خطا در بارگذاری</p>'; }
+}
+
+loadCats();
+loadProds();
+</script>
+{% endblock %}
