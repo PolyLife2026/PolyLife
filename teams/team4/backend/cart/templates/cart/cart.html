@@ -1,0 +1,182 @@
+{% extends "store/base.html" %}
+{% block title %}سبد خرید — PolyLife{% endblock %}
+
+{% block extra_css %}
+.cart-layout { display: grid; grid-template-columns: 1fr 320px; gap: 1.5rem; align-items: start; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: .7rem .9rem; text-align: right; border-bottom: 1px solid var(--gray); font-size: .88rem; }
+th { background: var(--p-vlight); color: var(--primary); font-weight: 700; }
+.qty-ctrl { display: flex; align-items: center; gap: .4rem; }
+.qty-btn {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--primary);
+  background: #fff;
+  color: var(--primary);
+  cursor: pointer;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.qty-num { min-width: 24px; text-align: center; font-weight: 600; }
+.summary-box {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--gray);
+  padding: 1.2rem;
+  position: sticky;
+  top: 70px;
+}
+.summary-row { display: flex; justify-content: space-between; margin-bottom: .5rem; font-size: .9rem; }
+.summary-row.total { font-weight: 800; font-size: 1.1rem; border-top: 2px solid var(--gray); padding-top: .7rem; margin-top: .5rem; }
+.coupon-row { display: flex; gap: .4rem; margin: .8rem 0; }
+.coupon-row input {
+  flex: 1;
+  padding: .5rem .7rem;
+  border: 1px solid var(--gray);
+  border-radius: 6px;
+  font-family: 'Vazirmatn', sans-serif;
+  font-size: .85rem;
+}
+.discount-info { background: var(--p-vlight); border-radius: 8px; padding: .6rem .9rem; font-size: .85rem; display: none; }
+{% endblock %}
+
+{% block content %}
+<h2 class="page-title">🛒 سبد خرید</h2>
+<div id="cart-wrap"><div class="spinner"></div></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let cartData = null;
+let discountInfo = null;
+
+async function loadCart() {
+  const el = document.getElementById('cart-wrap');
+  try {
+    const r = await fetch('/api/cart/');
+    if (!r.ok) {
+      el.innerHTML = `<div class="alert alert-error">
+        برای مشاهده سبد خرید ابتدا <a href="http://localhost:8000/login" style="color:inherit;font-weight:700">وارد شوید</a>.
+      </div>`;
+      return;
+    }
+    cartData = await r.json();
+    renderCart();
+  } catch { el.innerHTML = '<p class="alert alert-error">خطا در بارگذاری</p>'; }
+}
+
+function renderCart() {
+  const el = document.getElementById('cart-wrap');
+  if (!cartData.items || !cartData.items.length) {
+    el.innerHTML = `<div class="alert alert-info" style="text-align:center;padding:2rem">
+      🛒 سبد خرید شما خالی است.<br><br>
+      <a href="/store/products/" class="btn btn-primary">رفتن به فروشگاه</a>
+    </div>`;
+    return;
+  }
+
+  const rows = cartData.items.map(item => `
+    <tr>
+      <td><a href="/store/products/${item.product_id}/" style="color:var(--primary);font-weight:600">${item.name}</a></td>
+      <td>
+        <div class="qty-ctrl">
+          <button class="qty-btn" onclick="updateQty(${item.product_id}, ${item.quantity - 1})">−</button>
+          <span class="qty-num">${item.quantity}</span>
+          <button class="qty-btn" onclick="updateQty(${item.product_id}, ${item.quantity + 1})" ${item.quantity >= item.available_stock ? 'disabled style="opacity:.4"' : ''}>+</button>
+        </div>
+      </td>
+      <td>${price(item.price)}</td>
+      <td><strong>${price(item.subtotal)}</strong></td>
+      <td><button class="btn btn-danger btn-sm" onclick="updateQty(${item.product_id}, 0)">✕</button></td>
+    </tr>`).join('');
+
+  const finalTotal = discountInfo ? discountInfo.final_total : cartData.total;
+  el.innerHTML = `
+    <div class="cart-layout">
+      <div class="card" style="overflow:visible">
+        <table>
+          <thead><tr><th>محصول</th><th>تعداد</th><th>قیمت واحد</th><th>جمع</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div style="padding:.8rem;display:flex;justify-content:flex-start">
+          <a href="/store/products/" class="btn btn-outline btn-sm">← ادامه خرید</a>
+        </div>
+      </div>
+
+      <div class="summary-box">
+        <h3 style="margin-bottom:.9rem;color:var(--primary)">خلاصه سفارش</h3>
+        <div class="summary-row">
+          <span>جمع کل:</span><span>${price(cartData.total)}</span>
+        </div>
+        ${discountInfo ? `
+        <div class="summary-row" style="color:#27ae60">
+          <span>تخفیف (${discountInfo.discount_percent}٪):</span>
+          <span>− ${price(discountInfo.discount_amount)}</span>
+        </div>` : ''}
+        <div class="summary-row total">
+          <span>مبلغ نهایی:</span><span>${price(finalTotal)}</span>
+        </div>
+
+        <div class="coupon-row">
+          <input id="coupon-in" type="text" placeholder="کد تخفیف..." maxlength="30">
+          <button class="btn btn-outline btn-sm" onclick="applyCoupon()">اعمال</button>
+        </div>
+        <div class="discount-info" id="disc-info"></div>
+
+        <button class="btn btn-primary btn-full mt-2" onclick="goCheckout()">
+          ادامه و پرداخت →
+        </button>
+      </div>
+    </div>`;
+
+  // restore coupon display
+  if (discountInfo) {
+    const di = document.getElementById('disc-info');
+    di.style.display = 'block';
+    di.textContent = `✅ کد "${discountInfo.code}" — ${discountInfo.discount_percent}٪ تخفیف اعمال شد`;
+    document.getElementById('coupon-in').value = discountInfo.code;
+  }
+  updateCartBadge();
+}
+
+async function updateQty(productId, qty) {
+  try {
+    const r = await fetch('/api/cart/update/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product_id: productId, quantity: qty }),
+    });
+    const d = await r.json();
+    if (r.ok) { cartData = d.cart; discountInfo = null; renderCart(); }
+    else toast(d.error || 'خطا', 'err');
+  } catch { toast('خطای شبکه', 'err'); }
+}
+
+async function applyCoupon() {
+  const code = document.getElementById('coupon-in').value.trim().toUpperCase();
+  if (!code) return;
+  try {
+    const r = await fetch('/api/cart/apply-coupon/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    const d = await r.json();
+    if (r.ok) {
+      discountInfo = d;
+      renderCart();
+      toast('✅ کد تخفیف اعمال شد', 'ok');
+    } else {
+      toast(d.error || 'کد نامعتبر', 'err');
+    }
+  } catch { toast('خطای شبکه', 'err'); }
+}
+
+function goCheckout() {
+  const code = discountInfo ? discountInfo.code : '';
+  window.location.href = `/checkout/?coupon=${encodeURIComponent(code)}`;
+}
+
+loadCart();
+</script>
+{% endblock %}

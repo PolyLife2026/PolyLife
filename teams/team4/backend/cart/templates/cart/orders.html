@@ -1,0 +1,157 @@
+{% extends "store/base.html" %}
+{% block title %}سفارشات من — PolyLife{% endblock %}
+
+{% block extra_css %}
+.order-card {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--gray);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .9rem 1.1rem;
+  background: var(--p-vlight);
+  cursor: pointer;
+  user-select: none;
+}
+.order-header:hover { background: var(--p-light); }
+.status-badge {
+  padding: .25rem .75rem;
+  border-radius: 20px;
+  font-size: .78rem;
+  font-weight: 700;
+}
+.status-paid      { background: #d4edda; color: #155724; }
+.status-pending   { background: #fff3cd; color: #856404; }
+.status-failed    { background: #fde8e8; color: #7b1010; }
+.status-cancelled { background: #e2e3e5; color: #41464b; }
+.order-body { padding: 1rem 1.1rem; display: none; }
+.order-body.open { display: block; }
+.items-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.items-table td, .items-table th { padding: .45rem .6rem; border-bottom: 1px solid #f0f0f0; text-align: right; }
+.items-table th { background: #fafafa; font-weight: 700; color: #555; }
+.invoice-row { margin-top: .8rem; display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; }
+{% endblock %}
+
+{% block content %}
+<h2 class="page-title">📦 سفارشات من</h2>
+<div id="orders-list"><div class="spinner"></div></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function statusBadge(s) {
+  const map = {
+    paid: ['پرداخت شده', 'paid'],
+    pending: ['در انتظار', 'pending'],
+    failed: ['ناموفق', 'failed'],
+    cancelled: ['لغو شده', 'cancelled'],
+  };
+  const [label, cls] = map[s] || [s, 'pending'];
+  return `<span class="status-badge status-${cls}">${label}</span>`;
+}
+
+function toggleOrder(id) {
+  const body = document.getElementById(`ob-${id}`);
+  body.classList.toggle('open');
+}
+
+async function loadOrders() {
+  const el = document.getElementById('orders-list');
+  try {
+    const r = await fetch('/api/cart/orders/');
+    if (!r.ok) {
+      el.innerHTML = `<div class="alert alert-error">
+        لطفاً ابتدا <a href="http://localhost:8000/login">وارد شوید</a>.
+      </div>`;
+      return;
+    }
+    const orders = await r.json();
+    if (!orders.length) {
+      el.innerHTML = `<div class="alert alert-info" style="text-align:center;padding:2rem">
+        هنوز سفارشی ثبت نشده است.<br><br>
+        <a href="/" class="btn btn-primary">رفتن به فروشگاه</a>
+      </div>`;
+      return;
+    }
+    el.innerHTML = orders.map(o => `
+      <div class="order-card">
+        <div class="order-header" onclick="toggleOrder(${o.id})">
+          <div style="display:flex;align-items:center;gap:.8rem">
+            ${statusBadge(o.status)}
+            <span style="font-weight:600">سفارش #${o.id}</span>
+            <span class="text-muted">${new Date(o.created_at).toLocaleDateString('fa-IR')}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.8rem">
+            <strong class="text-primary">${price(o.final_amount)}</strong>
+            <span style="color:#999">▾</span>
+          </div>
+        </div>
+        <div class="order-body" id="ob-${o.id}">
+          <table class="items-table">
+            <thead><tr><th>محصول</th><th>تعداد</th><th>قیمت واحد</th><th>جمع</th></tr></thead>
+            <tbody>
+              ${(o.items || []).map(it => `
+                <tr>
+                  <td>${it.product_name || 'محصول'}</td>
+                  <td>${it.quantity}</td>
+                  <td>${price(it.unit_price)}</td>
+                  <td>${price(it.quantity * it.unit_price)}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+          <div class="invoice-row">
+            ${o.invoice ? `
+              <div>
+                <span class="text-muted">شماره فاکتور: </span>
+                <strong>${o.invoice.invoice_number}</strong>
+              </div>
+              <button class="btn btn-outline btn-sm" onclick="showInvoice('${o.invoice.invoice_number}')">
+                📄 مشاهده فاکتور کامل
+              </button>` : ''}
+            ${o.discount_code ? `<span class="text-muted">تخفیف: ${o.discount_code}</span>` : ''}
+          </div>
+        </div>
+      </div>`).join('');
+  } catch { el.innerHTML = '<p class="alert alert-error">خطا در بارگذاری</p>'; }
+}
+
+async function showInvoice(num) {
+  try {
+    const r = await fetch(`/api/cart/invoices/${num}/`);
+    const d = await r.json();
+    const w = window.open('', '_blank');
+    w.document.write(`
+      <html dir="rtl"><head>
+        <meta charset="UTF-8">
+        <link href="https://cdn.jsdelivr.net/npm/vazirmatn@33.0.3/Vazirmatn-font-face.css" rel="stylesheet">
+        <style>body{font-family:'Vazirmatn',sans-serif;max-width:600px;margin:2rem auto;color:#222}
+        h1{color:#185E64}table{width:100%;border-collapse:collapse}
+        td,th{padding:.5rem .7rem;border:1px solid #ddd;text-align:right}
+        th{background:#CDF1F4;color:#185E64}</style>
+      </head><body>
+        <h1>🏋️ فاکتور PolyLife</h1>
+        <p>شماره فاکتور: <strong>${d.invoice_number}</strong></p>
+        <p>تاریخ: ${new Date(d.created_at).toLocaleDateString('fa-IR')}</p>
+        <hr style="margin:1rem 0">
+        <table>
+          <thead><tr><th>محصول</th><th>تعداد</th><th>قیمت</th></tr></thead>
+          <tbody>
+            ${(d.order?.items || []).map(i =>
+              `<tr><td>${i.product_name || '-'}</td><td>${i.quantity}</td><td>${Number(i.unit_price).toLocaleString('fa-IR')} تومان</td></tr>`
+            ).join('')}
+          </tbody>
+        </table>
+        <p style="margin-top:1rem;font-weight:700;font-size:1.1rem">مبلغ نهایی: ${Number(d.order?.final_amount||0).toLocaleString('fa-IR')} تومان</p>
+      </body></html>`);
+    w.document.close();
+  } catch { toast('خطا در بارگذاری فاکتور', 'err'); }
+}
+
+loadOrders();
+</script>
+{% endblock %}
