@@ -110,6 +110,17 @@ REST_FRAMEWORK = {
         "rest_framework.pagination.PageNumberPagination"
     ),
     "PAGE_SIZE": 20,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "PolyLife Team 4 API",
+    "DESCRIPTION": (
+        "Store, supplement information, cart, checkout, "
+        "orders, transactions, and invoices."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 
 LANGUAGE_CODE = "en-us"
