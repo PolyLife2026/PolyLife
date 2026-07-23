@@ -1,3 +1,4 @@
+from django.urls import reverse
 from django_filters import rest_framework as django_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, generics, status
@@ -93,7 +94,9 @@ def product_share_link(request, pk):
         )
 
     product_path = f"/api/store/products/{product.pk}/"
-    share_url = request.build_absolute_uri(product_path)
+    share_url = request.build_absolute_uri(
+        reverse("product-detail-page", args=[product.id])
+    )
 
     return Response(
         {

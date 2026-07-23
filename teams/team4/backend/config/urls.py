@@ -104,4 +104,11 @@ urlpatterns = [
         ),
         name="orders-page",
     ),
+    path(
+        "login/",
+        TemplateView.as_view(
+            template_name="store/login.html",
+        ),
+        name="login-page",
+    ),
 ]
