@@ -17,6 +17,8 @@ from .views.competition_views import (
     CompetitionResultView,
     CompetitionLeaderboardView,
     CompetitionFinalRankingsView,
+    CompetitionStartView,
+    CompetitionFinishView,
 )
 
 app_name = "team1"
@@ -83,6 +85,16 @@ urlpatterns = [
         "api/competitions/<int:pk>/join/",
         CompetitionJoinView.as_view(),
         name="competition-join",
+    ),
+    path(
+        "api/competitions/<int:pk>/start/",
+        CompetitionStartView.as_view(),
+        name="competition-start",
+    ),
+    path(
+        "api/competitions/<int:pk>/finish/",
+        CompetitionFinishView.as_view(),
+        name="competition-finish",
     ),
     path(
         "api/competitions/<int:pk>/results/",

@@ -247,3 +247,55 @@ class CompetitionFinalRankingsView(generics.ListAPIView):
         return CompetitionParticipant.objects.filter(
             competition_id=self.kwargs["pk"]
         ).order_by("rank", "-total_score")
+
+class CompetitionActivateView(APIView):
+    """
+    BUGFIX: nothing ever transitioned a Competition from PENDING to ACTIVE
+    (or ACTIVE to FINISHED), so the result-entry form on the frontend
+    stayed permanently disabled and /final-rankings/ was permanently
+    unreachable. This gives the coach who created it manual control over
+    both transitions.
+
+    POST /team1/api/competitions/<id>/activate/  (pending -> active)
+    POST /team1/api/competitions/<id>/finish/    (active  -> finished)
+    """
+
+    authentication_classes = []
+    permission_classes = [IsCoach]
+
+    def _transition(self, request, pk, from_status, to_status):
+        competition = get_object_or_404(
+            Competition, competition_id=pk, is_deleted=False
+        )
+
+        if competition.status != from_status:
+            return Response(
+                {
+                    "detail": f"Competition must be '{from_status}' to do this "
+                              f"(it is currently '{competition.status}').",
+                    "status": competition.status,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        competition.status = to_status
+        competition.save(update_fields=["status"])
+
+        return Response(
+            {"competition_id": competition.competition_id, "status": competition.status},
+            status=status.HTTP_200_OK,
+        )
+
+
+class CompetitionStartView(CompetitionActivateView):
+    def post(self, request, pk):
+        return self._transition(
+            request, pk, Competition.Status.PENDING, Competition.Status.ACTIVE
+        )
+
+
+class CompetitionFinishView(CompetitionActivateView):
+    def post(self, request, pk):
+        return self._transition(
+            request, pk, Competition.Status.ACTIVE, Competition.Status.FINISHED
+        )

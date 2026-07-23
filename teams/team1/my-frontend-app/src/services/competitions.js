@@ -20,6 +20,11 @@ export async function joinCompetition(id) {
   return data;
 }
 
+export async function startCompetition(id) {
+  const { data } = await api.post(`/competitions/${id}/start/`);
+  return data;
+}
+
 export async function fetchCompetitionLeaderboard(id, params = {}) {
   const { data } = await api.get(`/competitions/${id}/leaderboard/`, { params });
   return data;

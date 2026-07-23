@@ -10,6 +10,7 @@ import {
   fetchCompetitionFinalRankings,
   fetchCompetitionLeaderboard,
   joinCompetition,
+  startCompetition,
 } from '../services/competitions';
 import { getCompetitionTypeLabel } from '../utils/constants';
 import { formatDateTime, parseApiError } from '../utils/formatters';
@@ -24,8 +25,10 @@ export default function CompetitionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [lbLoading, setLbLoading] = useState(false);
   const [joinLoading, setJoinLoading] = useState(false);
+  const [startLoading, setStartLoading] = useState(false);
   const [error, setError] = useState('');
   const [joinError, setJoinError] = useState('');
+  const [startError, setStartError] = useState('');
 
   const loadLeaderboard = useCallback(async () => {
     setLbLoading(true);
@@ -94,6 +97,19 @@ export default function CompetitionDetailPage() {
     }
   }
 
+  async function handleStart() {
+    setStartError('');
+    setStartLoading(true);
+    try {
+      const updated = await startCompetition(id);
+      setCompetition((prev) => ({ ...prev, status: updated.status }));
+    } catch (err) {
+      setStartError(parseApiError(err));
+    } finally {
+      setStartLoading(false);
+    }
+  }
+
   function handleResultSuccess() {
     loadLeaderboard();
   }
@@ -103,6 +119,7 @@ export default function CompetitionDetailPage() {
   if (!competition) return null;
 
   const canJoin = !competition.is_joined && competition.status === 'pending';
+  const canStart = isCoach && competition.status === 'pending';
   const isActive = competition.status === 'active';
   const isFinished = competition.status === 'finished';
   const displayRankings = isFinished && finalRankings.length ? finalRankings : leaderboard;
@@ -135,11 +152,17 @@ export default function CompetitionDetailPage() {
               {joinLoading ? 'در حال پیوستن...' : 'پیوستن به مسابقه'}
             </button>
           )}
+          {canStart && (
+            <button type="button" className="btn btn--secondary" disabled={startLoading} onClick={handleStart}>
+              {startLoading ? 'در حال شروع...' : 'شروع مسابقه'}
+            </button>
+          )}
           {competition.is_joined && (
             <span className="joined-badge">✓ شما در این مسابقه ثبت‌نام کرده‌اید</span>
           )}
         </div>
         {joinError && <div className="alert alert--error">{joinError}</div>}
+        {startError && <div className="alert alert--error">{startError}</div>}
       </header>
 
       <div className="detail-grid">
