@@ -6,6 +6,7 @@ from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
 )
+from store import views as store_views
 
 
 def health_check(request):
@@ -110,5 +111,22 @@ urlpatterns = [
             template_name="store/login.html",
         ),
         name="login-page",
+    ),
+    path(
+        "manage/",
+        store_views.admin_dashboard,
+        name="admin-dashboard",
+    ),
+    path(
+        "manage/products/",
+        store_views.admin_products_page,
+    ),
+    path(
+        "manage/orders/",
+        store_views.admin_orders_page,
+    ),
+    path(
+        "manage/discounts/",
+        store_views.admin_discounts_page,
     ),
 ]

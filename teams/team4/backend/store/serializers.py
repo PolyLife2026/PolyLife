@@ -36,10 +36,22 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            "id", "name", "slug", "description", "price",
-            "stock_quantity", "in_stock", "brand", "sport_type",
-            "rating", "image_url", "category", "category_name",
-            "supplement_id", "created_at",
+            "id",
+            "name",
+            "slug",
+            "description",
+            "price",
+            "stock_quantity",
+            "in_stock",
+            "brand",
+            "sport_type",
+            "rating",
+            "image_url",
+            "category",
+            "category_name",
+            "supplement_id",
+            "is_active",
+            "created_at",
         ]
 
     def get_in_stock(self, obj):
