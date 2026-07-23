@@ -1,64 +1,88 @@
 {% extends "store/base.html" %}
-{% block title %}ورود — PolyLife{% endblock %}
+
+{% block title %}ورود{% endblock %}
 
 {% block content %}
-<div class="card" style="max-width:420px;margin:2rem auto">
-  <h2 style="margin-bottom:1rem;color:var(--primary)">ورود به PolyLife</h2>
 
-  <form id="login-form">
-    <label for="username">نام کاربری</label>
-    <input
-      id="username"
-      type="text"
-      required
-      style="width:100%;padding:.7rem;margin:.4rem 0 1rem"
-    >
+<div class="auth-container">
+    <div class="auth-card">
 
-    <label for="password">رمز عبور</label>
-    <input
-      id="password"
-      type="password"
-      required
-      style="width:100%;padding:.7rem;margin:.4rem 0 1rem"
-    >
+        <h1>ورود به PolyLife</h1>
 
-    <button class="btn btn-primary btn-full" type="submit">
-      ورود
-    </button>
-  </form>
+        <form id="login-form">
+
+            <label>
+                نام کاربری
+            </label>
+            <input 
+                id="username"
+                type="text"
+                placeholder="نام کاربری"
+                required
+            >
+
+            <label>
+                رمز عبور
+            </label>
+            <input
+                id="password"
+                type="password"
+                placeholder="رمز عبور"
+                required
+            >
+
+            <button class="auth-submit" type="submit">
+                ورود
+            </button>
+
+        </form>
+
+    </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+
 <script>
-document.getElementById('login-form').addEventListener('submit', async event => {
-  event.preventDefault();
+document.getElementById("login-form")
+.addEventListener("submit", async (e) => {
 
-  const username = document.getElementById('username').value.trim();
-  const password = document.getElementById('password').value;
+    e.preventDefault();
 
-  try {
-    const response = await fetch('/core-api/login', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({username, password}),
+    const response = await fetch("/core-api/login", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            username:
+                document.getElementById("username").value,
+            password:
+                document.getElementById("password").value
+        })
     });
 
     const data = await response.json();
 
-    if (!response.ok || !data.token) {
-      toast(data.error || data.detail || 'نام کاربری یا رمز عبور اشتباه است', 'err');
-      return;
+    if (data.token) {
+        localStorage.setItem(
+            "polylife_token",
+            data.token
+        );
+
+        localStorage.setItem(
+            "polylife_username",
+            document.getElementById("username").value
+        );
+
+        const next =
+            new URLSearchParams(location.search)
+            .get("next");
+
+        location.href = next || "/";
     }
-
-    localStorage.setItem('polylife_token', data.token);
-    localStorage.setItem('polylife_username', username);
-
-    const next = new URLSearchParams(window.location.search).get('next');
-    window.location.href = next || '/';
-  } catch {
-    toast('خطا در ارتباط با سرویس ورود', 'err');
-  }
+    else {
+        alert("نام کاربری یا رمز عبور اشتباه است");
+    }
 });
 </script>
+
 {% endblock %}
