@@ -327,24 +327,10 @@ class SupplementStoreIntegrationTest(TestCase):
         self.assertIn("store_url", r.data)
 
     def test_store_filter_by_supplement_id(self):
-        """
-        ⚠️  باگ شناخته‌شده: کلاس Meta در views.py به‌اشتباه بیرون از
-        ProductFilter تعریف شده، در نتیجه supplement_id به عنوان فیلد
-        FilterSet ثبت نمی‌شود و این فیلتر کار نمی‌کند.
-
-        تست فعلی رفتار واقعی (شکسته) را ثبت می‌کند.
-        پس از رفع باگ (انتقال Meta به داخل ProductFilter)، assertion
-        زیر باید به این تغییر کند:
-            self.assertEqual(r.data["count"], 1)
-            self.assertEqual(r.data["results"][0]["name"], "بسته کراتین")
-        """
         r = self.client.get("/api/store/products/", {"supplement_id": self.supplement.id})
         self.assertEqual(r.status_code, 200)
-        # با باگ فعلی، فیلتر نادیده گرفته می‌شود و همه محصولات برمی‌گردند
-        self.assertGreater(r.data["count"], 1, "supplement_id filter is currently broken (Meta class outside ProductFilter)")
-        # محصول مرتبط باید در نتایج باشد
-        names = [p["name"] for p in r.data["results"]]
-        self.assertIn("بسته کراتین", names)
+        self.assertEqual(r.data["count"], 1)
+        self.assertEqual(r.data["results"][0]["name"], "بسته کراتین")
 
     def test_store_link_excludes_inactive_products(self):
         self.linked_product.is_active = False
