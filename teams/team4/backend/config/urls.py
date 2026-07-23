@@ -7,6 +7,7 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 from store import views as store_views
+from supplements import views as supplement_views
 
 
 def health_check(request):
@@ -129,4 +130,13 @@ urlpatterns = [
         "manage/discounts/",
         store_views.admin_discounts_page,
     ),
+    
+    path(
+        "manage/supplements/",
+        store_views.admin_supplements_page,
+    ),
+    # path(
+    #     "manage/<int:pk>/",
+    #     supplement_views.AdminSupplementDetailView.as_view(),
+    # ),
 ]

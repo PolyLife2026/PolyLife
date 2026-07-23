@@ -314,3 +314,17 @@ def admin_discounts_page(request):
         "store/admin/discounts.html"
     )
 
+def admin_supplements_page(request):
+
+    if not check_admin_page(request):
+        return HttpResponseForbidden(
+            """
+            <h1>Access Denied</h1>
+            <p>You do not have permission to access this page.</p>
+            """
+        )
+
+    return render(
+        request,
+        "store/admin/supplements.html"
+    )

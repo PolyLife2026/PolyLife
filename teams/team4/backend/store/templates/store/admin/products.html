@@ -71,11 +71,10 @@ placeholder="https://example.com/image.jpg">
 
 
 <div class="form-group">
-<label>شناسه مکمل</label>
-
-<input id="supplement_id"
-type="number">
-
+    <label for="supplement_id">مکمل مرتبط</label>
+    <select id="supplement_id">
+        <option value="">بدون مکمل</option>
+    </select>
 </div>
 
 
@@ -247,7 +246,41 @@ addCategories(categories);
 }
 
 
+async function loadSupplements(){
 
+    const res =
+    await fetch(
+        "/api/supplements/"
+    );
+
+
+    const json =
+    await res.json();
+
+
+    const supplements =
+    json.results || json;
+
+
+    const select =
+    document.getElementById(
+        "supplement_id"
+    );
+
+
+    supplements.forEach(s=>{
+
+        select.innerHTML += `
+
+        <option value="${s.id}">
+            ${s.name}
+        </option>
+
+        `;
+
+    });
+
+}
 
 
 
@@ -621,6 +654,8 @@ loadProducts();
 loadCategories();
 
 loadProducts();
+
+loadSupplements();
 
 
 </script>
