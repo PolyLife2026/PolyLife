@@ -14,21 +14,22 @@ flow; clients enter through the Team 7 Nginx gateway on
 
 ## Current implementation status
 
-The repository currently contains the Sprint 1 foundations:
+The repository currently contains the completed Team 7 work through
+`SCRUM-16`:
 
 - FastAPI application and Uvicorn runtime
 - SQLAlchemy async models and Alembic migrations for the Team 7 schema
 - PostgreSQL and Redis service definitions
 - Forwarded-identity dependency for `X-User-Id` and `X-User-Username`
-- Public backend liveness endpoint: `GET /healthz`
-- Auth dependency smoke endpoint: `GET /meta/auth-smoke`
-- Unit tests for health, identity forwarding, models, and schema behavior
+- Coach directory, availability, appointment booking, and ratings APIs
+- Chat-thread creation, coach presence, and attachment upload APIs
+- A static HTML/JS dashboard served by the Team 7 gateway
+- Unit tests for health, identity forwarding, models, and implemented routes
 
-The chat and reservation business endpoints documented in
-[`.agents/04_api_endpoints.md`](.agents/04_api_endpoints.md) are the target API
-contract and are implemented incrementally through the remaining Jira tickets.
-Do not assume a documented endpoint exists until its ticket is complete and the
-route appears in the generated OpenAPI document.
+The remaining Chat WebSocket work and final CI/smoke-test gate are tracked in
+the open Jira tickets. The target contract and permission rules live in
+[`.agents/04_api_endpoints.md`](.agents/04_api_endpoints.md); the generated
+OpenAPI document remains the source of truth for routes currently available.
 
 Live ticket ownership and status are tracked in Jira and mirrored in
 [`.agents/06_task_assignment.md`](.agents/06_task_assignment.md).
@@ -87,6 +88,7 @@ teams/team7/
 ├── .env.example              canonical development configuration
 ├── docker-compose.yml        gateway, backend, PostgreSQL, and Redis
 ├── gateway.conf              Nginx forward-auth and proxy configuration
+├── frontend/                 static Coach Space HTML, CSS, and JavaScript
 ├── run.sh / run.ps1          Team 7 startup wrappers
 ├── backend/
 │   ├── Dockerfile            Python 3.12 multi-stage uv image
@@ -206,11 +208,16 @@ Then run one of the wrappers:
 .\run.ps1
 ```
 
-The wrappers execute `docker compose up --build`. The intended services are:
+The wrappers execute `docker compose up --build`. Then open
+`http://localhost:9107` to use the Coach Space dashboard. Sign in through
+PolyLife Core first: the page uses the Core-authenticated session for every
+`/api/...` request.
+
+The intended services are:
 
 | Service | Purpose | Network exposure |
 |---|---|---|
-| `gateway` | Nginx entry point and Core forward-auth | Host port `9107` |
+| `gateway` | Nginx entry point, static frontend, and Core forward-auth | Host port `9107` |
 | `backend` | Team 7 FastAPI application | Internal port `8000` |
 | `db` | PostgreSQL 16 | Private Team 7 network |
 | `redis` | Pub/sub and rate-limit state | Private Team 7 network |
@@ -224,15 +231,6 @@ docker compose logs -f backend
 docker compose down
 docker compose down -v   # destructive: also removes Team 7 database data
 ```
-
-### Current Compose caveat
-
-At the time of this README update, `docker-compose.yml` configures the backend
-build context as the Team 7 root, while the actual Dockerfile is
-`backend/Dockerfile`. If `docker compose up --build` reports that
-`teams/team7/Dockerfile` is missing, use the uv workflow above until the Compose
-build context is corrected by its infrastructure ticket. Do not copy or move
-the backend Dockerfile as an undocumented workaround.
 
 ## Configuration
 
@@ -262,6 +260,14 @@ passwords, tokens, or a populated `.env` file.
 |---|---|---|---|
 | `GET` | `/healthz` | Public | Process liveness |
 | `GET` | `/meta/auth-smoke` | Forwarded identity headers | Echo verified identity |
+| `GET`, `POST` | `/chat/threads` | Forwarded identity headers | List or open a coach chat thread |
+| `GET` | `/chat/coaches/online` | Forwarded identity headers | List coaches currently online |
+| `PATCH` | `/chat/coaches/me/status` | Coach identity | Set the caller's online status |
+| `POST` | `/chat/threads/{thread_id}/attachments` | Thread participant | Upload a chat attachment |
+| `GET`, `POST` | `/reserve/coaches` and `/reserve/coaches/me` | Forwarded identity headers | Browse or maintain coach profiles |
+| `GET`, `POST`, `PATCH`, `DELETE` | `/reserve/.../availability` | User or coach identity | Browse and manage availability |
+| `GET`, `POST`, `PATCH` | `/reserve/appointments` | Appointment participant | Book and manage appointments |
+| `GET`, `POST` | `/reserve/coaches/{coach_user_id}/ratings` | Forwarded identity headers | Read or leave coach ratings |
 
 FastAPI also exposes OpenAPI and Swagger directly from the backend at
 `/openapi.json` and `/docs`. Gateway paths may differ as routing evolves; check
@@ -312,6 +318,19 @@ end-to-end route, also run the relevant integrated checks in
 [`.agents/08_implementation_checklist.md`](.agents/08_implementation_checklist.md).
 Report each command as PASS, FAIL, or SKIPPED with a reason. A passing unit test
 does not prove that gateway authentication or container networking works.
+
+### Final smoke test
+
+After Core is running and you have a valid Core access token, run the complete
+Team 7 verification from the repository root:
+
+```bash
+TEAM7_TOKEN='paste-core-token-here' ./teams/team7/smoke-test.sh
+```
+
+The script verifies that Docker and the shared Core network are available,
+builds and starts the Team 7 stack, runs the backend pytest suite, checks the
+static frontend, and makes an authenticated request through the gateway.
 
 ## Contribution workflow
 

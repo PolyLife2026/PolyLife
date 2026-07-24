@@ -1,0 +1,85 @@
+:root {
+  --ink: #173832;
+  --muted: #66766d;
+  --leaf: #24725c;
+  --leaf-pale: #dceee3;
+  --paper: #f8f6ef;
+  --cream: #eee8da;
+  --coral: #ed8361;
+  --line: #d8d6cb;
+  --shadow: 0 18px 45px rgba(33, 61, 52, 0.11);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--ink); background: var(--paper); font-family: Georgia, "Times New Roman", serif; }
+button, input { font: inherit; }
+button { cursor: pointer; }
+.page-shell { min-height: 100vh; background: radial-gradient(circle at 80% 5%, #dfecd8 0, transparent 28rem), linear-gradient(140deg, #f8f6ef 0%, #f3eee1 100%); }
+.site-header, main { width: min(1160px, calc(100% - 40px)); margin: auto; }
+.site-header { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; }
+.brand { color: var(--ink); display: flex; align-items: center; gap: 10px; text-decoration: none; font-size: 1.08rem; letter-spacing: -0.03em; }
+.brand b { color: var(--leaf); font-weight: normal; }
+.brand-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50% 50% 50% 9px; background: var(--leaf); color: white; font-weight: bold; }
+.hero { padding: 74px 0 68px; max-width: 800px; }
+.eyebrow { margin: 0 0 9px; color: var(--leaf); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .72rem; font-weight: bold; letter-spacing: .12em; text-transform: uppercase; }
+h1, h2, h3, p { margin-top: 0; }
+h1 { margin-bottom: 18px; font-size: clamp(2.7rem, 7vw, 5.7rem); font-weight: normal; letter-spacing: -.065em; line-height: .93; }
+h1 em { color: var(--coral); }
+h2 { margin-bottom: 0; font-size: 1.65rem; font-weight: normal; letter-spacing: -.04em; }
+h3 { margin-bottom: 0; font-size: 1.25rem; font-weight: normal; }
+.hero-copy { max-width: 590px; color: var(--muted); font-size: 1.1rem; line-height: 1.65; }
+.hero-meta { display: flex; align-items: center; gap: 20px; color: var(--muted); font-size: .9rem; }
+.availability-pill, .status-dot { border-radius: 999px; background: var(--leaf-pale); color: var(--leaf); padding: 7px 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .75rem; }
+.workspace { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(0, 1.35fr); overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: #fffdf7; box-shadow: var(--shadow); }
+.coach-panel, .detail-panel, .appointments-section { padding: 30px; }
+.coach-panel { border-right: 1px solid var(--line); background: rgba(220, 238, 227, .28); }
+.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 21px; }
+.section-heading.compact { margin-bottom: 14px; }
+.search-field input { width: 150px; border: 0; border-bottom: 1px solid var(--ink); outline: 0; background: transparent; padding: 6px 0; color: var(--ink); font-size: .86rem; }
+.coach-list, .slot-list, .appointment-list { display: grid; gap: 10px; }
+.coach-card { width: 100%; border: 1px solid transparent; border-radius: 14px; background: transparent; padding: 15px; color: inherit; text-align: left; transition: .18s ease; }
+.coach-card:hover, .coach-card[aria-current="true"] { border-color: var(--line); background: #fffdf7; transform: translateX(3px); }
+.coach-card-top, .card-meta, .slot-card, .appointment-card { display: flex; justify-content: space-between; gap: 12px; }
+.coach-card strong { font-size: 1.07rem; font-weight: normal; }
+.coach-card small, .card-meta, .detail-bio, .chat-note, .empty-state p { color: var(--muted); }
+.card-meta { margin-top: 7px; font-size: .82rem; }
+.online-indicator { width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: #a5aaa5; }
+.online-indicator.online { background: var(--leaf); box-shadow: 0 0 0 4px var(--leaf-pale); }
+.empty-state { display: grid; min-height: 390px; place-content: center; text-align: center; }
+.empty-orbit { display: grid; width: 62px; height: 62px; margin: 0 auto 18px; place-items: center; border: 1px solid var(--leaf); border-radius: 50%; color: var(--leaf); font-size: 1.8rem; }
+.detail-topline { display: flex; justify-content: space-between; align-items: center; }
+.detail-bio { margin: 18px 0 24px; line-height: 1.65; }
+.profile-facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 17px 0 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.profile-facts div { min-width: 0; }
+.profile-facts dt { color: var(--muted); font-size: .76rem; }
+.profile-facts dd { margin: 5px 0 0; font-size: .95rem; }
+.actions-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0; }
+.button { border: 1px solid var(--ink); border-radius: 999px; padding: 10px 16px; transition: .18s ease; }
+.button:hover { transform: translateY(-1px); }
+.button-dark { background: var(--ink); color: #fffdf7; }
+.button-quiet { background: transparent; color: var(--ink); }
+.slots-section, .chat-section { margin-top: 27px; }
+.slot-card, .appointment-card { align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 13px; }
+.slot-card time { display: block; font-size: .93rem; }
+.slot-card small, .appointment-card small { color: var(--muted); }
+.slot-card .button { padding: 7px 12px; font-size: .82rem; }
+.chat-section { border-radius: 15px; background: var(--leaf-pale); padding: 20px; }
+.thread-id { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; }
+.attachment-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.file-label { color: var(--ink); font-size: .85rem; }
+.attachment-form input { max-width: 210px; font-size: .8rem; }
+.appointments-section { margin: 28px 0 56px; border: 1px solid var(--line); border-radius: 20px; background: #fffdf7; }
+.appointment-card { background: var(--paper); }
+.empty-list { margin: 0; color: var(--muted); }
+.toast { position: fixed; right: 22px; bottom: 22px; max-width: 360px; border-radius: 12px; background: var(--ink); color: white; box-shadow: var(--shadow); padding: 14px 18px; }
+.toast.error { background: #9d4029; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+
+@media (max-width: 760px) {
+  .site-header, main { width: min(100% - 28px, 1160px); }
+  .hero { padding: 45px 0; }
+  .workspace { grid-template-columns: 1fr; }
+  .coach-panel { border-right: 0; border-bottom: 1px solid var(--line); }
+  .coach-panel, .detail-panel, .appointments-section { padding: 22px; }
+  .profile-facts { grid-template-columns: 1fr; }
+}

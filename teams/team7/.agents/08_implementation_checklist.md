@@ -38,7 +38,7 @@
 - [ ] Top-level `requirements.txt` and `settings.py` are untouched.
 - [ ] Team-local `requirements.txt` + our own `Dockerfile` exist.
 - [ ] Nginx gateway exists; routes `/api/*` to our backend.
-- [ ] Gateway routes the WebSocket path `/api/chat/ws` correctly.
+- [x] Gateway routes the WebSocket path `/api/chat/ws` correctly.
 - [ ] Backend reads `X-User-Id` / `X-User-Username` and never decodes JWT.
 - [ ] All API endpoints listed in `04_api_endpoints.md` are implemented.
 - [ ] WebSocket chat works end-to-end (text + presence + typing).

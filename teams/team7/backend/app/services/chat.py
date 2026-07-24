@@ -1,4 +1,4 @@
-"""Chat service layer (SCRUM-8).
+"""Chat service layer (SCRUM-8, SCRUM-14, SCRUM-15).
 
 Pure database functions for the chat with-coach service. The HTTP layer
 in ``app.api.chat`` depends on these so router tests can stay focused on
@@ -22,14 +22,22 @@ Idempotency / uniqueness contract for ``get_or_create_thread``:
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
+from tempfile import gettempdir
+from uuid import uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.base import _utcnow
+from app.models.chat_message import ChatMessage
 from app.models.chat_thread import ChatThread
 from app.models.coach_profile import CoachProfile
+from app.models.message_attachment import MessageAttachment
+from app.schemas.chat import CoachOnlineStatusUpdateRequest
+from app.services import reserve as reserve_service
 
 
 async def coach_profile_exists(session: AsyncSession, coach_user_id: int) -> bool:
@@ -41,6 +49,46 @@ async def coach_profile_exists(session: AsyncSession, coach_user_id: int) -> boo
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none() is not None
+
+
+async def list_online_coaches(session: AsyncSession) -> list[dict]:
+    """Return active coach profiles currently marked online."""
+
+    rows = await reserve_service.list_coach_profiles(session)
+    return [row for row in rows if row["is_online"]]
+
+
+async def update_current_coach_status(
+    session: AsyncSession,
+    *,
+    coach_user_id: int,
+    payload: CoachOnlineStatusUpdateRequest,
+) -> dict:
+    """Toggle the caller's ``is_online`` flag and return the public profile."""
+
+    stmt = select(CoachProfile).where(
+        CoachProfile.user_id == coach_user_id,
+        CoachProfile.is_deleted.is_(False),
+    )
+    result = await session.execute(stmt)
+    profile = result.scalar_one_or_none()
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No coach profile found for the current user.",
+        )
+
+    profile.is_online = payload.is_online
+    profile.updated_at = _utcnow()
+    await session.commit()
+
+    row = await reserve_service.get_coach_profile(session, coach_user_id)
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load coach profile after status update.",
+        )
+    return row
 
 
 async def list_threads_for_user(
@@ -123,7 +171,6 @@ async def _fetch_active_thread(
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
 
-
 async def _fetch_soft_deleted_thread(
     session: AsyncSession, user_id: int, coach_user_id: int
 ) -> ChatThread | None:
@@ -134,3 +181,63 @@ async def _fetch_soft_deleted_thread(
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def get_active_thread(session: AsyncSession, thread_id: int) -> ChatThread | None:
+    """Return the active thread by id if it exists."""
+
+    stmt = select(ChatThread).where(
+        ChatThread.id == thread_id,
+        ChatThread.is_deleted.is_(False),
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def create_thread_attachment(
+    session: AsyncSession,
+    *,
+    thread: ChatThread,
+    sender_user_id: int,
+    filename: str,
+    mime_type: str,
+    content: bytes,
+) -> MessageAttachment:
+    """Persist an uploaded file via a placeholder message + attachment row."""
+
+    attachment_dir = Path(gettempdir()) / "team7_chat_attachments"
+    attachment_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_name = Path(filename).name or "attachment.bin"
+    stored_name = f"{uuid4().hex}_{safe_name}"
+    stored_path = attachment_dir / stored_name
+    stored_path.write_bytes(content)
+
+    message = ChatMessage(
+        thread_id=thread.id,
+        sender_user_id=sender_user_id,
+        body="",
+    )
+    session.add(message)
+    await session.flush()
+
+    attachment = MessageAttachment(
+        message_id=message.id,
+        file_url=f"file://{stored_path}",
+        mime_type=mime_type or "application/octet-stream",
+        size_bytes=len(content),
+    )
+    session.add(attachment)
+    thread.last_message_at = _utcnow()
+    thread.updated_at = _utcnow()
+
+    try:
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        if stored_path.exists():
+            stored_path.unlink()
+        raise
+
+    await session.refresh(attachment)
+    return attachment
