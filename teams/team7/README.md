@@ -209,9 +209,8 @@ Then run one of the wrappers:
 ```
 
 The wrappers execute `docker compose up --build`. Then open
-`http://localhost:9107` to use the Coach Space dashboard. Sign in through
-PolyLife Core first: the page uses the Core-authenticated session for every
-`/api/...` request.
+`http://localhost:9107` to use the Coach Space dashboard. The backend applies
+all pending Alembic migrations before Uvicorn starts.
 
 The intended services are:
 
@@ -284,7 +283,9 @@ are documented in [`.agents/04_api_endpoints.md`](.agents/04_api_endpoints.md).
 ## Database migrations
 
 Alembic reads `DATABASE_URL` through the same application settings as FastAPI.
-With a reachable PostgreSQL instance:
+`docker compose up` automatically runs `alembic upgrade head` before starting
+the backend. To inspect or apply migrations manually with a reachable
+PostgreSQL instance:
 
 ```bash
 cd teams/team7/backend
