@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css?v=20260724-chat-booking">
+    <link rel="stylesheet" href="./styles.css?v=20260724-cancellation">
   </head>
   <body>
     <div class="page-shell">
@@ -181,7 +181,25 @@
       </form>
     </dialog>
 
+    <dialog id="cancellation-dialog" class="reservation-dialog" aria-labelledby="cancellation-heading">
+      <form id="cancellation-form" class="reservation-form">
+        <div>
+          <p class="eyebrow eyebrow-danger" data-i18n="cancelAppointment">Cancel appointment</p>
+          <h2 id="cancellation-heading" data-i18n="cancelAppointmentTitle">Cancel this appointment?</h2>
+        </div>
+        <div class="reservation-summary cancellation-summary">
+          <strong id="cancellation-coach"></strong>
+          <span id="cancellation-slot"></span>
+        </div>
+        <p class="cancellation-note" data-i18n="cancelAppointmentDescription">The appointment will be marked as cancelled and cannot be restored from this page.</p>
+        <div class="dialog-actions">
+          <button id="keep-appointment-button" class="button button-quiet" type="button" data-i18n="keepAppointment">Keep appointment</button>
+          <button id="confirm-cancellation-button" class="button button-danger" type="submit" data-i18n="confirmCancellation">Yes, cancel it</button>
+        </div>
+      </form>
+    </dialog>
+
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-    <script src="./app.js?v=20260724-chat-booking" defer></script>
+    <script src="./app.js?v=20260724-cancellation" defer></script>
   </body>
 </html>

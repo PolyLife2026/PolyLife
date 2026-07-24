@@ -65,6 +65,17 @@ const translations = {
     yourSchedule: "Your schedule",
     upcomingAppointments: "Upcoming appointments",
     loadAppointments: "Load appointments",
+    cancelAppointment: "Cancel appointment",
+    cancelAppointmentTitle: "Cancel this appointment?",
+    cancelAppointmentDescription: "The appointment will be marked as cancelled and cannot be restored from this page.",
+    keepAppointment: "Keep appointment",
+    confirmCancellation: "Yes, cancel it",
+    cancellingAppointment: "Cancelling...",
+    appointmentCancelled: "Your appointment was cancelled.",
+    statusConfirmed: "Confirmed",
+    statusCancelled: "Cancelled",
+    statusCompleted: "Completed",
+    statusNoShow: "No-show",
     sessionExpired: "Your PolyLife session has expired.",
     genericError: "Something went wrong.",
     loginFailed: "Sign-in failed",
@@ -163,6 +174,17 @@ const translations = {
     yourSchedule: "برنامه شما",
     upcomingAppointments: "جلسه‌های پیش رو",
     loadAppointments: "نمایش جلسه‌ها",
+    cancelAppointment: "لغو رزرو",
+    cancelAppointmentTitle: "این رزرو لغو شود؟",
+    cancelAppointmentDescription: "وضعیت این جلسه به لغوشده تغییر می‌کند و از همین صفحه قابل بازگردانی نیست.",
+    keepAppointment: "حفظ رزرو",
+    confirmCancellation: "بله، لغو شود",
+    cancellingAppointment: "در حال لغو...",
+    appointmentCancelled: "رزرو شما با موفقیت لغو شد.",
+    statusConfirmed: "تأییدشده",
+    statusCancelled: "لغوشده",
+    statusCompleted: "تکمیل‌شده",
+    statusNoShow: "عدم حضور",
     sessionExpired: "نشست پلی‌لایف شما منقضی شده است.",
     genericError: "مشکلی پیش آمد.",
     loginFailed: "ورود ناموفق بود",
@@ -219,6 +241,7 @@ const state = {
   messagesLoaded: false,
   messagePoll: null,
   pendingSlot: null,
+  pendingCancellation: null,
   refreshing: null,
   language: storedLanguage === "fa" ? "fa" : "en",
 };
@@ -269,6 +292,12 @@ const elements = {
   reservationNotes: document.querySelector("#reservation-notes"),
   confirmReservationButton: document.querySelector("#confirm-reservation-button"),
   cancelReservationButton: document.querySelector("#cancel-reservation-button"),
+  cancellationDialog: document.querySelector("#cancellation-dialog"),
+  cancellationForm: document.querySelector("#cancellation-form"),
+  cancellationCoach: document.querySelector("#cancellation-coach"),
+  cancellationSlot: document.querySelector("#cancellation-slot"),
+  keepAppointmentButton: document.querySelector("#keep-appointment-button"),
+  confirmCancellationButton: document.querySelector("#confirm-cancellation-button"),
   toast: document.querySelector("#toast"),
 };
 
@@ -328,6 +357,7 @@ function applyLanguage(language) {
   if (state.selectedCoach) renderCoachDetail();
   if (state.slotsLoaded) renderSlots();
   if (state.pendingSlot) renderReservationSummary();
+  if (state.pendingCancellation) renderCancellationSummary();
   if (state.messagesLoaded) renderMessages();
   if (state.appointmentsLoaded) renderAppointments();
 }
@@ -776,8 +806,75 @@ function renderAppointments() {
     return;
   }
   elements.appointmentList.innerHTML = state.appointments.map((appointment) => `
-    <article class="appointment-card"><div><strong>${t("coachName", { id: formatNumber(appointment.coach_user_id) })}</strong><br><small>${t("status", { status: escapeHtml(appointment.status) })} · ${t("slot", { id: formatNumber(appointment.availability_id) })}</small></div><span class="status-dot">${escapeHtml(appointment.status)}</span></article>
+    <article class="appointment-card">
+      <div>
+        <strong>${t("coachName", { id: formatNumber(appointment.coach_user_id) })}</strong><br>
+        <small>${t("status", { status: appointmentStatusLabel(appointment.status) })} · ${t("slot", { id: formatNumber(appointment.availability_id) })}</small>
+      </div>
+      <div class="appointment-actions">
+        <span class="status-dot">${appointmentStatusLabel(appointment.status)}</span>
+        ${appointment.status === "confirmed" ? `<button class="button button-danger button-small" type="button" data-cancel-appointment="${appointment.id}">${t("cancelAppointment")}</button>` : ""}
+      </div>
+    </article>
   `).join("");
+}
+
+function appointmentStatusLabel(status) {
+  const key = {
+    confirmed: "statusConfirmed",
+    cancelled: "statusCancelled",
+    completed: "statusCompleted",
+    no_show: "statusNoShow",
+  }[status];
+  return key ? t(key) : escapeHtml(status);
+}
+
+function renderCancellationSummary() {
+  if (!state.pendingCancellation) return;
+  elements.cancellationCoach.textContent = t("coachName", {
+    id: formatNumber(state.pendingCancellation.coach_user_id),
+  });
+  elements.cancellationSlot.textContent = t("slot", {
+    id: formatNumber(state.pendingCancellation.availability_id),
+  });
+}
+
+function openCancellation(appointmentId) {
+  const appointment = state.appointments.find((item) => item.id === Number(appointmentId));
+  if (!appointment || appointment.status !== "confirmed") return;
+  state.pendingCancellation = appointment;
+  renderCancellationSummary();
+  elements.cancellationDialog.showModal();
+}
+
+function closeCancellation() {
+  if (elements.cancellationDialog.open) elements.cancellationDialog.close();
+  state.pendingCancellation = null;
+}
+
+async function confirmCancellation(event) {
+  event.preventDefault();
+  if (!state.pendingCancellation) return;
+  const appointmentId = state.pendingCancellation.id;
+  elements.confirmCancellationButton.disabled = true;
+  elements.confirmCancellationButton.textContent = t("cancellingAppointment");
+
+  try {
+    const response = await request(`/reserve/appointments/${appointmentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "cancelled" }),
+    });
+    state.appointments = state.appointments.map((appointment) => {
+      return appointment.id === appointmentId ? response.data : appointment;
+    });
+    closeCancellation();
+    renderAppointments();
+    showToast(t("appointmentCancelled"));
+  } finally {
+    elements.confirmCancellationButton.disabled = false;
+    elements.confirmCancellationButton.textContent = t("confirmCancellation");
+  }
 }
 
 async function loadAppointments() {
@@ -837,6 +934,20 @@ elements.attachmentForm.addEventListener("submit", (event) => {
   uploadAttachment(event).catch((error) => showToast(error.message, true));
 });
 elements.attachmentInput.addEventListener("change", renderAttachmentName);
+elements.appointmentList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-cancel-appointment]");
+  if (button) openCancellation(button.dataset.cancelAppointment);
+});
+elements.cancellationForm.addEventListener("submit", (event) => {
+  confirmCancellation(event).catch((error) => showToast(error.message, true));
+});
+elements.keepAppointmentButton.addEventListener("click", closeCancellation);
+elements.cancellationDialog.addEventListener("close", () => {
+  state.pendingCancellation = null;
+});
+elements.cancellationDialog.addEventListener("click", (event) => {
+  if (event.target === elements.cancellationDialog) closeCancellation();
+});
 
 applyLanguage(state.language);
 const username = localStorage.getItem(USER_KEY);
