@@ -1,0 +1,42 @@
+name: Team 7 Backend CI
+
+on:
+  push:
+    paths:
+      - 'teams/team7/**'
+      - '.github/workflows/team7-ci.yml'
+  pull_request:
+    paths:
+      - 'teams/team7/**'
+      - '.github/workflows/team7-ci.yml'
+
+jobs:
+  test:
+    name: Team 7 backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install uv
+        run: pip install uv
+      - name: Sync dependencies
+        working-directory: teams/team7/backend
+        run: uv sync --frozen
+      - name: Run pytest
+        working-directory: teams/team7/backend
+        run: uv run pytest -q
+      - name: Run ruff
+        working-directory: teams/team7/backend
+        run: uv run ruff check .
+
+  docker_build:
+    name: Team 7 backend Docker build
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -t team7-backend teams/team7/backend
