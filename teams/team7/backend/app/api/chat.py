@@ -18,10 +18,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
+from app.core.redis import get_redis_client
 from app.core.security import CurrentUser, get_current_user
 from app.schemas.chat import (
     ChatAttachmentRead,
     ChatAttachmentResponse,
+    ChatMessageRead,
+    ChatMessageResponse,
     ChatThreadCreateRequest,
     ChatThreadListResponse,
     ChatThreadRead,
@@ -30,6 +33,8 @@ from app.schemas.chat import (
 )
 from app.schemas.reserve import CoachProfileListResponse, CoachProfileRead, CoachProfileResponse
 from app.services import chat as chat_service
+from app.services import chat_ws as chat_ws_service
+from app.services.chat_pubsub import publish_event, thread_channel
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -210,3 +215,65 @@ async def upload_thread_attachment(
         content=content,
     )
     return ChatAttachmentResponse(data=ChatAttachmentRead.model_validate(attachment))
+
+
+@router.post(
+    "/threads/{thread_id}/messages/{message_id}/read",
+    response_model=ChatMessageResponse,
+)
+async def mark_message_as_read(
+    thread_id: int,
+    message_id: int,
+    current_user: CurrentUser = Depends(get_current_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> ChatMessageResponse:
+    """Mark a message as read and broadcast a ``message.read`` WebSocket event.
+
+    The caller must be a participant in the thread. The event is
+    best-effort: the REST call succeeds even if Redis is temporarily
+    unavailable.
+    """
+    thread = await chat_service.get_active_thread(session, thread_id)
+    if thread is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chat thread not found.",
+        )
+    if current_user.id not in (thread.user_id, thread.coach_user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not a participant in this chat thread.",
+        )
+
+    message = await chat_ws_service.mark_message_read(
+        session,
+        thread=thread,
+        message_id=message_id,
+        reader_user_id=current_user.id,
+    )
+    if message is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chat message not found in this thread.",
+        )
+    await session.commit()
+    await session.refresh(message)
+
+    try:
+        redis_client = get_redis_client()
+        await publish_event(
+            redis_client,
+            channel=thread_channel(thread.id),
+            event="message.read",
+            data={
+                "message_id": message.id,
+                "thread_id": thread.id,
+                "reader_user_id": current_user.id,
+                "read_at": (message.read_at or message.updated_at or message.created_at).isoformat(),
+            },
+        )
+    except Exception:
+        # Presence / read fan-out is non-critical.
+        pass
+
+    return ChatMessageResponse(data=ChatMessageRead.model_validate(message))
