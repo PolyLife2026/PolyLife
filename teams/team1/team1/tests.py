@@ -23,6 +23,7 @@ from .models import (
 from .services.final_ranking import calculate_final_rankings
 
 class ChallengeCreateAPITest(APITestCase):
+    '''Unit tests for challenge creation, covering coach permissions, validation errors, and header requirements.'''
 
     def setUp(self):
         self.url = '/team1/api/challenges/' 
@@ -92,6 +93,7 @@ class ChallengeCreateAPITest(APITestCase):
 
 
 class ChallengeListTests(APITestCase):
+    '''Unit tests for listing challenges, ensuring that only active (non-deleted) challenges are returned.'''
 
     def setUp(self):
 
@@ -135,6 +137,7 @@ class ChallengeListTests(APITestCase):
         }
 
     def test_list_challenges_returns_only_active(self):
+        '''test: GET request returns only active (non-deleted) challenges'''
         # Act
         response = self.client.get(self.url, **self.headers)
         
@@ -197,6 +200,9 @@ class ChallengeUpdateAPITest(APITestCase):
         )
 
     def test_edit_allowed_before_challenge_start(self):
+        '''
+        test: challenge owner can edit the challenge before it starts
+        '''
         response = self._patch(
             self.pre_start_challenge.challenge_id,
             {"title": "Updated before start"},
@@ -207,6 +213,9 @@ class ChallengeUpdateAPITest(APITestCase):
         self.assertEqual(self.pre_start_challenge.title, "Updated before start")
 
     def test_edit_blocked_after_challenge_start(self):
+        '''
+        test: challenge owner cannot edit the challenge after it has started
+        '''
         response = self._patch(
             self.post_start_challenge.challenge_id,
             {"title": "Should not update"},
@@ -217,6 +226,9 @@ class ChallengeUpdateAPITest(APITestCase):
         self.assertNotEqual(self.post_start_challenge.title, "Should not update")
 
     def test_edit_blocked_for_non_owner(self):
+        '''
+        test: a user who is not the challenge owner cannot edit the challenge
+        '''
         response = self._patch(
             self.pre_start_challenge.challenge_id,
             {"title": "Should not update"},
@@ -228,6 +240,7 @@ class ChallengeUpdateAPITest(APITestCase):
         self.assertNotEqual(self.pre_start_challenge.title, "Should not update")
 
 class ChallengeFilterTests(APITestCase):
+    '''Unit tests for filtering challenges by activity_type, difficulty, and date range.'''
 
     def setUp(self):
         self.url = reverse('team1:challenge-list-create')
@@ -323,6 +336,7 @@ class ChallengeFilterTests(APITestCase):
         self.assertEqual(len(challenge_ids), 2)
 
 class ChallengeJoinTests(APITestCase):
+    '''Unit tests for joining a challenge, covering successful join, duplicate join, and joining inactive challenges.'''
     
     def setUp(self):
 
@@ -360,6 +374,9 @@ class ChallengeJoinTests(APITestCase):
         self.user_id = 12345
 
     def test_successful_join(self):
+        '''
+        test: a user can successfully join an active challenge
+        '''
         url = reverse('team1:challenge-join', kwargs={'pk': self.active_challenge.pk})
         
         # Pass the header as HTTP_X_USER_ID
@@ -374,6 +391,9 @@ class ChallengeJoinTests(APITestCase):
         self.assertEqual(participant.challenge, self.active_challenge)
 
     def test_duplicate_join_rejected(self):
+        '''
+        test: a user cannot join the same challenge twice; should return 409 Conflict
+        '''
         # Insert initial record manually
         ParticipantChallenge.objects.create(
             challenge=self.active_challenge,
@@ -390,6 +410,9 @@ class ChallengeJoinTests(APITestCase):
         self.assertEqual(ParticipantChallenge.objects.count(), 1)
 
     def test_join_inactive_challenge_rejected(self):
+        '''
+        test: a user cannot join an inactive (ended) challenge; should return 400 Bad Request or 404 Not Found
+        '''
         url = reverse('team1:challenge-join', kwargs={'pk': self.ended_challenge.pk})
         response = self.client.post(url, HTTP_X_USER_ID=self.user_id)
         
@@ -402,8 +425,7 @@ class ChallengeJoinTests(APITestCase):
 
 class ActivityCreateTests(APITestCase):
     """
-    SCRUM-88: covers the happy path (successful submission) plus the
-    validation errors introduced in SCRUM-85/86/87:
+    successful submission plus the validation errors :
       - missing X-User-Id header
       - non-positive value
       - non-existent / deleted challenge
@@ -453,6 +475,9 @@ class ActivityCreateTests(APITestCase):
     # --- happy path ---
 
     def test_successful_submission(self):
+        '''
+        test: a user can successfully submit an activity for an active challenge
+        '''
         response = self._post({
             "challenge": self.active_challenge.challenge_id,
             "value": "5.50",
@@ -471,6 +496,9 @@ class ActivityCreateTests(APITestCase):
     # --- missing user header ---
 
     def test_missing_user_id_header_is_rejected(self):
+        '''
+        test: submitting an activity without the X-User-Id header returns 403 Forbidden
+        '''
         response = self._post(
             {
                 "challenge": self.active_challenge.challenge_id,
@@ -485,6 +513,9 @@ class ActivityCreateTests(APITestCase):
     # --- non-positive value ---
 
     def test_non_positive_value_is_rejected(self):
+        '''
+        test: submitting an activity with a non-positive value returns 400 Bad Request
+        '''
         response = self._post({
             "challenge": self.active_challenge.challenge_id,
             "value": "0",
@@ -497,6 +528,9 @@ class ActivityCreateTests(APITestCase):
     # --- invalid / missing challenge ---
 
     def test_nonexistent_challenge_is_rejected(self):
+        '''
+        test: submitting an activity for a non-existent challenge returns 400 Bad Request
+        '''
         response = self._post({
             "challenge": 999999,
             "value": "5",
@@ -506,6 +540,9 @@ class ActivityCreateTests(APITestCase):
         self.assertEqual(Activity.objects.count(), 0)
 
     def test_deleted_challenge_is_rejected(self):
+        '''
+        test: submitting an activity for a deleted challenge returns 400 Bad Request
+        '''
         self.active_challenge.is_deleted = True
         self.active_challenge.save()
 
@@ -521,6 +558,9 @@ class ActivityCreateTests(APITestCase):
     # --- inactive (ended) challenge ---
 
     def test_ended_challenge_is_rejected(self):
+        '''
+        test: submitting an activity for an ended challenge returns 400 Bad Request
+        '''
         response = self._post({
             "challenge": self.ended_challenge.challenge_id,
             "value": "5",
@@ -533,6 +573,9 @@ class ActivityCreateTests(APITestCase):
     # --- activity_date outside the challenge's window ---
 
     def test_activity_date_outside_challenge_window_is_rejected(self):
+        '''
+        test: submitting an activity with activity_date outside the challenge's date_start/date_end window returns 400 Bad Request
+        '''
         response = self._post({
             "challenge": self.active_challenge.challenge_id,
             "value": "5",
@@ -543,6 +586,9 @@ class ActivityCreateTests(APITestCase):
         self.assertEqual(Activity.objects.count(), 0)
 
     def test_activity_without_joining_is_rejected(self):
+        '''
+        test: a user cannot submit an activity for a challenge they haven't joined; returns 400 Bad Request
+        '''
         ParticipantChallenge.objects.filter(
             challenge=self.active_challenge,
             user_id=42,
@@ -559,7 +605,12 @@ class ActivityCreateTests(APITestCase):
 
 
 class ChallengeLifecycleTests(APITestCase):
+    '''Unit tests for automatic status transitions of challenges based on date_start and date_end.'''
+
     def test_created_becomes_started_when_start_date_passes(self):
+        '''
+        test: a challenge in CREATED status automatically transitions to STARTED when date_start passes
+        '''
         now = timezone.now()
         challenge = Challenge.objects.create(
             title="Lifecycle start",
@@ -580,6 +631,9 @@ class ChallengeLifecycleTests(APITestCase):
         self.assertEqual(response.data["status"], Challenge.Status.STARTED)
 
     def test_started_becomes_ended_when_end_date_passes(self):
+        '''
+        test: a challenge in STARTED status automatically transitions to ENDED when date_end passes
+        '''
         now = timezone.now()
         challenge = Challenge.objects.create(
             title="Lifecycle end",
@@ -601,7 +655,7 @@ class ChallengeLifecycleTests(APITestCase):
 
 
 class CompetitionCreateAPITest(APITestCase):
-    """SCRUM-126: unit tests for Competition creation permissions and validation."""
+    """ unit tests for Competition creation permissions and validation."""
 
     def setUp(self):
         self.url = "/team1/api/competitions/"
@@ -637,6 +691,9 @@ class CompetitionCreateAPITest(APITestCase):
         self.assertEqual(Competition.objects.count(), 0)
 
     def test_missing_user_id_header_is_rejected(self):
+        '''
+        test: submitting a competition creation request without the X-User-Id header returns 403 Forbidden
+        '''
         headers = {"HTTP_X_USER_ROLE": "coach"}
         response = self.client.post(self.url, data=self.valid_payload, format="json", **headers)
 
@@ -644,6 +701,9 @@ class CompetitionCreateAPITest(APITestCase):
         self.assertEqual(Competition.objects.count(), 0)
 
     def test_end_date_before_start_date_is_rejected(self):
+        '''
+        test: submitting a competition creation request with end date before start date returns 400 Bad Request
+        '''
         payload = dict(self.valid_payload)
         payload["date_start"] = "2026-08-31T00:00:00Z"
         payload["date_end"] = "2026-08-01T00:00:00Z"
@@ -655,6 +715,10 @@ class CompetitionCreateAPITest(APITestCase):
         self.assertEqual(Competition.objects.count(), 0)
 
     def test_invalid_competition_type_is_rejected(self):
+        '''
+        test: submitting a competition creation request with an invalid competition type returns 400 Bad Request
+        '''
+
         payload = dict(self.valid_payload)
         payload["competition_type"] = "not_a_real_type"
 
@@ -666,7 +730,6 @@ class CompetitionCreateAPITest(APITestCase):
 
 class ActivityUpdateTests(APITestCase):
     """
-    SCRUM-19:
     Tests updating an activity:
       - owner can edit on the same day
       - another user cannot edit the activity
@@ -725,6 +788,9 @@ class ActivityUpdateTests(APITestCase):
     # ---------- happy path ----------
 
     def test_owner_can_update_activity_on_same_day(self):
+        '''
+        test: the owner of an activity can update it on the same day
+        '''
         response = self._patch(
             self.today_activity.activity_id,
             {
@@ -745,6 +811,9 @@ class ActivityUpdateTests(APITestCase):
     # ---------- wrong owner ----------
 
     def test_other_user_cannot_update_activity(self):
+        '''
+        test: a user who is not the owner of the activity cannot update it; returns 403 Forbidden
+        '''
         response = self._patch(
             self.today_activity.activity_id,
             {
@@ -764,6 +833,9 @@ class ActivityUpdateTests(APITestCase):
     # ---------- previous day ----------
 
     def test_previous_day_activity_cannot_be_updated(self):
+        '''
+        test: an activity from a previous day cannot be updated
+        '''
         response = self._patch(
             self.old_activity.activity_id,
             {
@@ -781,6 +853,7 @@ class ActivityUpdateTests(APITestCase):
 
 
 class ChallengeSoftDeleteTests(APITestCase):
+    '''Unit tests for soft-deleting challenges, ensuring only challenges in 'CREATED' status can be deleted.'''
 
     def setUp(self):
 
@@ -853,6 +926,7 @@ class ChallengeSoftDeleteTests(APITestCase):
         self.assertFalse(self.started_challenge.is_deleted)
 
 class ChallengeDetailTests(APITestCase):
+    '''Unit tests for the Challenge detail view, ensuring correct serializer output and handling of soft-deleted challenges.'''
 
     def setUp(self):
 
@@ -881,6 +955,7 @@ class ChallengeDetailTests(APITestCase):
 
     def test_serializer_output_and_participant_count(self):
         """Ensure detail serializer returns expected public fields."""
+
         response = self.client.get(self.url, **self.auth_headers)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -912,8 +987,7 @@ class ChallengeDetailTests(APITestCase):
 
 class CompetitionJoinAPITest(APITestCase):
     """
-    SCRUM-27:
-    Test joining a competition.
+    Unit tests for joining a competition, covering successful join, duplicate join, closed competitions, and missing headers.
     """
 
     def setUp(self):
@@ -929,6 +1003,9 @@ class CompetitionJoinAPITest(APITestCase):
         )
 
     def test_join_success(self):
+        '''
+        test: a user can successfully join a competition
+        '''
         response = self.client.post(
             f"/team1/api/competitions/{self.competition.competition_id}/join/",
             HTTP_X_USER_ID="100",
@@ -943,6 +1020,9 @@ class CompetitionJoinAPITest(APITestCase):
         )
 
     def test_duplicate_join(self):
+        '''
+        test: a user cannot join a competition they have already joined
+        '''
         CompetitionParticipant.objects.create(
             competition=self.competition,
             user_id=100,
@@ -956,6 +1036,9 @@ class CompetitionJoinAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
     def test_closed_competition(self):
+        '''
+        test: a user cannot join a closed competition
+        '''
         self.competition.status = Competition.Status.ACTIVE
         self.competition.save()
 
@@ -967,6 +1050,9 @@ class CompetitionJoinAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_missing_user_header(self):
+        '''
+        test: submitting a competition join request without the X-User-Id header returns 403 Forbidden
+        '''
         response = self.client.post(
             f"/team1/api/competitions/{self.competition.competition_id}/join/"
         )
@@ -974,6 +1060,9 @@ class CompetitionJoinAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_competition_not_found(self):
+        '''
+        test: attempting to join a non-existent competition returns 404 Not Found
+        '''
         response = self.client.post(
             "/team1/api/competitions/99999/join/",
             HTTP_X_USER_ID="100",
@@ -982,6 +1071,7 @@ class CompetitionJoinAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 class ChallengeLeaderboardAPITest(APITestCase):
+    '''Unit tests for the Challenge leaderboard API, ensuring correct ranking and ordering of participants based on their scores.'''
 
     def setUp(self):
 
@@ -1024,6 +1114,9 @@ class ChallengeLeaderboardAPITest(APITestCase):
         )
 
     def test_challenge_leaderboard(self):
+        '''
+        test: the leaderboard API returns participants ordered by score descending, with correct ranks.
+        '''
 
         response = self.client.get(self.url)
 
@@ -1038,6 +1131,7 @@ class ChallengeLeaderboardAPITest(APITestCase):
         self.assertEqual(response.data[2]["rank"], 3)
 
 class MyRankAPITest(APITestCase):
+    '''Unit tests for retrieving the current user's rank in a challenge, ensuring correct rank and score are returned.'''
 
     def setUp(self):
 
@@ -1079,6 +1173,7 @@ class MyRankAPITest(APITestCase):
         )
 
     def test_my_rank_success(self):
+        '''test: a user can successfully retrieve their rank in a challenge'''
 
         headers = {
             "HTTP_X_USER_ID": "2"
@@ -1110,6 +1205,7 @@ class MyRankAPITest(APITestCase):
         )
 
 class ChallengeAutoCloseTest(APITestCase):
+    '''Unit tests for automatic closure of challenges when an activity is submitted after the challenge's end date.'''
 
     def setUp(self):
         self.url = "/team1/api/activities/"
@@ -1128,6 +1224,9 @@ class ChallengeAutoCloseTest(APITestCase):
         )
 
     def test_activity_submission_to_expired_challenge(self):
+        '''
+        test: submitting an activity to a challenge that has already ended should automatically close the challenge and reject the activity submission.
+        '''
 
         payload = {
             "challenge": self.challenge.challenge_id,
@@ -1161,7 +1260,6 @@ class ChallengeAutoCloseTest(APITestCase):
 
 class CompetitionResultAPITest(APITestCase):
     """
-    SCRUM-28:
     Test recording competition results and ranking recalculation.
     """
 
@@ -1195,6 +1293,7 @@ class CompetitionResultAPITest(APITestCase):
         )
 
     def test_score_is_persisted(self):
+        '''test: recording a score for a participant updates their total_score in the database'''
         response = self._record(100, 42.5)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -1202,6 +1301,7 @@ class CompetitionResultAPITest(APITestCase):
         self.assertEqual(self.p1.total_score, Decimal("42.50"))
 
     def test_ranking_recalculated_after_result(self):
+        '''test: ranking is recalculated after a new result is recorded'''
         self._record(100, 30)
         self._record(200, 90)
 
@@ -1212,6 +1312,7 @@ class CompetitionResultAPITest(APITestCase):
         self.assertEqual(self.p1.rank, 2)
 
     def test_tied_scores_share_the_same_rank(self):
+        '''test: participants with tied scores share the same rank'''
         self._record(100, 50)
         self._record(200, 50)
 
@@ -1222,11 +1323,13 @@ class CompetitionResultAPITest(APITestCase):
         self.assertEqual(self.p2.rank, 1)
 
     def test_result_for_non_participant_is_rejected(self):
+        '''test: attempting to record a result for a user who is not a participant is rejected'''
         response = self._record(999, 10)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_non_coach_cannot_record_results(self):
+        '''test: a user without the 'coach' role cannot record competition results; returns 403 Forbidden'''
         response = self.client.post(
             self.url,
             data={"user_id": 100, "score": 42.5},
@@ -1238,6 +1341,7 @@ class CompetitionResultAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_put_also_records_result(self):
+        '''test: using PUT method also records a result and updates the participant's score'''
         response = self._record(100, 77, method="put")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -1245,7 +1349,7 @@ class CompetitionResultAPITest(APITestCase):
         self.assertEqual(self.p1.total_score, Decimal("77.00"))
 
 class CompetitionFinalRankingsAPITest(APITestCase):
-    """SCRUM-30: finalized ranking output, including the not-ended edge case and ties."""
+    """Unit tests for finalized ranking output, including the not-ended edge case and ties."""
 
     def _make_competition(self, comp_status, date_end=None):
        if date_end is None:
@@ -1261,6 +1365,8 @@ class CompetitionFinalRankingsAPITest(APITestCase):
        )
 
     def test_final_rankings_unavailable_while_active(self):
+        '''test: attempting to retrieve final rankings for an active competition returns 409 Conflict'''
+
         competition = self._make_competition(
         Competition.Status.ACTIVE,
         date_end=timezone.now() + timedelta(days=5),
@@ -1272,6 +1378,8 @@ class CompetitionFinalRankingsAPITest(APITestCase):
         self.assertEqual(response.data["status"], Competition.Status.ACTIVE)
 
     def test_final_rankings_unavailable_while_pending(self):
+        '''test: attempting to retrieve final rankings for a pending competition returns 409 Conflict'''
+
         competition = self._make_competition(Competition.Status.PENDING)
         url = f"/team1/api/competitions/{competition.competition_id}/final-rankings/"
 
@@ -1280,6 +1388,8 @@ class CompetitionFinalRankingsAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
     def test_final_rankings_returned_when_finished(self):
+        '''test: final rankings are returned correctly for a finished competition'''
+
         competition = self._make_competition(Competition.Status.FINISHED)
         CompetitionParticipant.objects.create(
             competition=competition, user_id=100, total_score=90, rank=1
@@ -1296,6 +1406,8 @@ class CompetitionFinalRankingsAPITest(APITestCase):
         self.assertEqual([row["user_id"] for row in results], [100, 200])
 
     def test_final_rankings_with_tied_scores(self):
+        '''test: final rankings correctly handle tied scores, assigning the same rank to participants with equal scores'''
+
         competition = self._make_competition(Competition.Status.FINISHED)
         CompetitionParticipant.objects.create(
             competition=competition, user_id=100, total_score=70, rank=1
@@ -1316,12 +1428,15 @@ class CompetitionFinalRankingsAPITest(APITestCase):
         self.assertEqual(results[2]["rank"], 3)
 
     def test_final_rankings_for_nonexistent_competition_is_404(self):
+        '''test: attempting to retrieve final rankings for a non-existent competition returns 404 Not Found'''
+
         response = self.client.get("/team1/api/competitions/99999/final-rankings/")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
 class FinalRankingTests(TestCase):
+    ''''Unit tests for the final ranking calculation logic, ensuring correct rank assignment and reward distribution based on scores.'''
 
     def setUp(self):
 
@@ -1433,6 +1548,7 @@ class FinalRankingTests(TestCase):
         self.assertEqual(participant.final_rank, 1)
 
 class RewardDistributionTests(TestCase):
+    '''Unit tests for reward distribution based on final rankings, ensuring correct badge assignment to top participants.'''
 
     def setUp(self):
 
@@ -1475,6 +1591,7 @@ class RewardDistributionTests(TestCase):
         )
 
     def test_top1_receives_three_badges(self):
+        '''test: the participant with the highest score receives all three badges (TOP_1, TOP_3, TOP_10)'''
 
         self.create_participant(1, "100")
         self.create_participant(2, "90")
@@ -1488,7 +1605,7 @@ class RewardDistributionTests(TestCase):
         )
 
     def test_top3_receives_two_badges(self):
-
+        '''test: the participant with the third-highest score receives two badges (TOP_3, TOP_10)'''
         self.create_participant(1, "100")
         self.create_participant(2, "90")
         self.create_participant(3, "80")
@@ -1502,6 +1619,7 @@ class RewardDistributionTests(TestCase):
         )
 
     def test_top10_receives_one_badge(self):
+        '''test: the participant with the tenth-highest score receives one badge (TOP_10)'''
 
         for i in range(1, 11):
 
@@ -1518,7 +1636,7 @@ class RewardDistributionTests(TestCase):
         )
 
     def test_outside_top10_receives_no_badge(self):
-
+        '''test: participants outside the top 10 receive no badges'''
         for i in range(1, 12):
 
             self.create_participant(
@@ -1534,6 +1652,7 @@ class RewardDistributionTests(TestCase):
         )
 
 class ChallengeResultTests(TestCase):
+    '''Unit tests for retrieving a participant's results in a challenge, including rank, score, and badges.'''
 
     def setUp(self):
         self.client = APIClient()
@@ -1575,6 +1694,7 @@ class ChallengeResultTests(TestCase):
         )
 
     def test_my_results_success(self):
+        '''test: a participant can successfully retrieve their results for a challenge, including rank, score, and badges'''
         response = self.client.get(
             f"/team1/api/challenges/{self.challenge.challenge_id}/my-results/",
             HTTP_X_USER_ID="1",
@@ -1595,6 +1715,7 @@ class ChallengeResultTests(TestCase):
         )
 
     def test_challenge_not_completed(self):
+        '''test: if the challenge is not completed (not in ENDED status), retrieving results returns 404 Not Found'''
         self.challenge.status = Challenge.Status.STARTED
         self.challenge.save()
 
@@ -1606,6 +1727,9 @@ class ChallengeResultTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_missing_user_header(self):
+        '''
+        test: submitting a request to retrieve challenge results without the X-User-Id header
+        '''
         response = self.client.get(
             f"/team1/api/challenges/{self.challenge.challenge_id}/my-results/",
         )
@@ -1613,6 +1737,7 @@ class ChallengeResultTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_participant_not_found(self):
+        '''test: if the participant is not found in the challenge, retrieving results returns 404 Not Found'''
         response = self.client.get(
             f"/team1/api/challenges/{self.challenge.challenge_id}/my-results/",
             HTTP_X_USER_ID="999",

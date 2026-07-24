@@ -9,21 +9,7 @@ from rest_framework.exceptions import ValidationError
 from django.utils import timezone
 from rest_framework.response import Response
 from django.core.paginator import Paginator
-from rest_framework.response import Response
-from rest_framework import generics
 from rest_framework.views import APIView
-
-from ..models import ParticipantScore
-from ..serializers.challenge import LeaderboardSerializer
-from rest_framework import generics
-from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied
-
-from ..models import ParticipantScore
-from ..serializers.challenge import LeaderboardSerializer
-from django.core.paginator import Paginator
-from rest_framework.response import Response
-from rest_framework import generics
 
 from ..models import ParticipantScore
 from ..serializers.challenge import LeaderboardSerializer
@@ -43,8 +29,12 @@ from ..services.challenge_lifecycle import (
 
 class ChallengeListCreateView(generics.ListCreateAPIView):
     """
-    GET /team1/api/challenges/ : List all active challenges
-    POST /team1/api/challenges/ : Create a new challenge
+    API view to retrieve a list of active challenges or create a new challenge.
+
+    Endpoints:
+    - GET /team1/api/challenges/ : Retrieves a list of challenges that are not soft-deleted and not cancelled.
+    - POST /team1/api/challenges/ : Creates a new challenge. Requires 'IsCoach' permission. 
+                                    The creator's user ID is extracted from the 'X-User-Id' header.
     """
     # For testing purposes without logging in
     authentication_classes = [] 
@@ -90,8 +80,17 @@ class ChallengeListCreateView(generics.ListCreateAPIView):
 
 
 class ChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    API view to retrieve, update, or soft-delete a specific challenge.
 
-    # Remove queryset = Challenge.objects.all() and use get_queryset instead
+    Endpoints:
+    - GET /team1/api/challenges/<challenge_id>/ : Retrieves detailed information about a specific challenge.
+    - PUT/PATCH /team1/api/challenges/<challenge_id>/ : Updates the challenge. Only allowed if the challenge is in 
+                                                        'CREATED' status and the start time has not passed. 
+                                                        Requires 'IsCoach' and 'IsChallengeCreator' permissions.
+    - DELETE /team1/api/challenges/<challenge_id>/ : Soft-deletes the challenge by setting the 'is_deleted' flag.
+                                                     Only allowed if the challenge is in 'CREATED' status.
+    """
 
     lookup_field = 'challenge_id'
 
@@ -154,6 +153,14 @@ class ChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ChallengeJoinView(APIView):
+    """
+    API view to allow a user to join a specific challenge.
+
+    Endpoints:
+    - POST /team1/api/challenges/<pk>/join/ : Registers the user as a participant in the challenge.
+                                              Requires the 'X-User-Id' header for identification.
+                                              The challenge must be active and not deleted.
+    """
     def post(self, request, pk, format=None):
         # SCRUM-81: Read user_id from X-User-Id header
         user_id_str = request.META.get('HTTP_X_USER_ID')
@@ -206,6 +213,13 @@ class ChallengeJoinView(APIView):
     
 
 class MyRankView(generics.GenericAPIView):
+    """
+    API view to retrieve the current user's rank in a specific challenge.
+
+    Endpoints:
+    - GET /team1/api/challenges/<challenge_id>/my-rank/ : Calculates and returns the rank and score 
+                                                          of the user identified by the 'X-User-Id' header.
+    """
 
     serializer_class = LeaderboardSerializer
 
@@ -248,6 +262,13 @@ class MyRankView(generics.GenericAPIView):
 
 
 class ChallengeLeaderboardView(generics.GenericAPIView):
+    """
+    API view to retrieve a paginated leaderboard for a specific challenge.
+
+    Endpoints:
+    - GET /team1/api/challenges/<challenge_id>/leaderboard/ : Returns a list of participants ordered 
+                                                               by their score in descending order.
+    """
 
     serializer_class = LeaderboardSerializer
 
@@ -283,11 +304,17 @@ class ChallengeLeaderboardView(generics.GenericAPIView):
         serializer = self.get_serializer(data, many=True)
 
         return Response(serializer.data)
+
+
 class MyChallengeResultView(generics.GenericAPIView):
     """
-    GET /api/challenges/<challenge_id>/my-results/
+    API view to retrieve the participant's final result after the challenge ends.
 
-    Returns the participant's final result after the challenge ends.
+    Endpoints:
+    - GET /team1/api/challenges/<challenge_id>/my-results/ : Returns the total score, final rank, 
+                                                              earned badges, and rewards for the user 
+                                                              identified by the 'X-User-Id' header.
+                                                              The challenge status must be 'ENDED'.
     """
 
     serializer_class = ChallengeResultSerializer

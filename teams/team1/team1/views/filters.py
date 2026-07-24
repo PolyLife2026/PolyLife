@@ -2,6 +2,9 @@ import django_filters
 from ..models import Challenge
 
 class ChallengeFilter(django_filters.FilterSet):
+    '''
+    FilterSet for the Challenge model, allowing filtering by activity type, difficulty, and date range.
+    '''
 
     activity_type = django_filters.ChoiceFilter(
         choices=Challenge.ActivityType.choices,

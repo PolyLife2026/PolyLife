@@ -66,6 +66,9 @@ class ActivityCreateView(generics.CreateAPIView):
 
 
 class ActivityUpdateView(generics.UpdateAPIView):
+    """
+    PUT /team1/api/activities/<activity_id>/ : Update an existing activity
+    """
 
     queryset = Activity.objects.filter(is_deleted=False)
     serializer_class = ActivitySerializer

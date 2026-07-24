@@ -1,45 +1,38 @@
+"""
+Models for the Activity module.
+
+This module defines the Activity model, which represents a single activity
+submission made by a participant (user) against a specific fitness challenge.
+User management belongs to the Core service, so this model only persists the
+user_id received from the API Gateway via the X-User-Id header.
+"""
 
 from django.db import models
 from django.core.validators import MinValueValidator
 from .challenge import Challenge  # adjust import path if your app layout differs
 
-# Your team's data models go here. They live in YOUR database (the core's
-# router routes "team1" models to the "team1" database automatically).
-#
-# Link rows to the logged-in user by their core id — store the id, do NOT add a
-# ForeignKey to the core User (it lives in a different database).
-#
-# Example (uncomment and adapt):
-#
-# class Note(models.Model):
-#     user_id = models.IntegerField(db_index=True)   # comes from X-User-Id
-#     text = models.TextField()
-#     created_at = models.DateTimeField(auto_now_add=True)
-
-"""
-SCRUM-84: Design and implement Activity model.
-
-Represents a single activity submission made by a participant (user)
-against a specific challenge. The user itself is NOT stored as a local
-FK because user management belongs to the Core service; we only persist
-the user_id we receive from the Gateway via the X-User-Id header.
-"""
-
-
 
 class Activity(models.Model):
     """
-    One daily activity record submitted by a participant for a challenge.
-    The submitted `value` contributes toward the parent Challenge's
-    `value_goal`, expressed in the same `goal_unit`.
+    Represents one daily activity record submitted by a participant for a challenge.
+    
+    The submitted `value` contributes toward the parent Challenge's `value_goal`, 
+    expressed in the same `goal_unit`. Supports soft deletion via the `is_deleted` flag.
+
+    Attributes:
+        activity_id (AutoField): The primary key for the activity record.
+        user_id (BigIntegerField): ID of the participant, taken from the X-User-Id header.
+        challenge (ForeignKey): The Challenge this activity contributes progress to.
+        value (DecimalField): Positive numeric value representing the recorded progress.
+        activity_date (DateField): The actual date the activity took place.
+        note (CharField): Optional free-text note from the participant.
+        created_at (DateTimeField): Auto-generated creation timestamp.
+        updated_at (DateTimeField): Auto-generated update timestamp.
+        is_deleted (BooleanField): Flag indicating if the record is soft-deleted.
     """
 
-    # Explicit PK name, matching the team's convention used in Challenge
-    # (challenge_id) rather than Django's default "id".
     activity_id = models.AutoField(primary_key=True)
 
-    # Owner of this activity record. Not a FK: the User table is owned by
-    # the Core service, in a different database than this microservice's.
     user_id = models.BigIntegerField(
         db_index=True,
         help_text="ID of the participant, taken from the X-User-Id header.",
@@ -53,10 +46,6 @@ class Activity(models.Model):
         help_text="Challenge this activity contributes progress to.",
     )
 
-    # The measured progress value for this submission, in the same unit as
-    # challenge.goal_unit (km, minute, step, calorie, kg). Uses Decimal to
-    # match Challenge.value_goal and avoid float rounding drift when values
-    # are later summed for progress/leaderboards.
     value = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -64,7 +53,6 @@ class Activity(models.Model):
         help_text="Positive numeric value representing the recorded progress.",
     )
 
-    # The calendar date this activity refers to (not the submission time).
     activity_date = models.DateField(
         db_index=True,
         help_text="The date the activity actually took place.",
@@ -77,7 +65,6 @@ class Activity(models.Model):
         help_text="Optional free-text note from the participant.",
     )
 
-    # --- Mandatory bookkeeping columns required by the project spec ---
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     is_deleted = models.BooleanField(default=False)
@@ -85,12 +72,11 @@ class Activity(models.Model):
     class Meta:
         db_table = "activity"
         indexes = [
-            # Speeds up "give me all activities for this user in this challenge"
             models.Index(fields=["user_id", "challenge"], name="idx_activity_user_challenge"),
-            # Speeds up per-day lookups / leaderboard style aggregations
             models.Index(fields=["challenge", "activity_date"], name="idx_activity_challenge_date"),
         ]
         ordering = ["-activity_date", "-created_at"]
 
     def __str__(self):
+        """Returns the string representation of the Activity."""
         return f"Activity(user={self.user_id}, challenge={self.challenge_id}, value={self.value})"

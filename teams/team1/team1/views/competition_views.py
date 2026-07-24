@@ -70,8 +70,6 @@ class CompetitionDetailView(generics.RetrieveAPIView):
 
 class CompetitionJoinView(APIView):
     """
-    SCRUM-27
-
     POST /team1/api/competitions/<id>/join/
 
     Allows a participant to join a competition.
@@ -125,8 +123,6 @@ class CompetitionJoinView(APIView):
 
 class CompetitionResultView(APIView):
     """
-    SCRUM-28
-
     POST/PUT /team1/api/competitions/<id>/results/
 
     Records (or updates) a single participant's score in a competition and
@@ -194,8 +190,6 @@ class CompetitionResultView(APIView):
 
 class CompetitionLeaderboardView(generics.ListAPIView):
     """
-    SCRUM-29
-
     GET /team1/api/competitions/<id>/leaderboard/
 
     Returns participants of a competition ordered by rank (best first).
@@ -228,8 +222,6 @@ class CompetitionLeaderboardView(generics.ListAPIView):
 
 class CompetitionFinalRankingsView(generics.ListAPIView):
     """
-    SCRUM-30
-
     GET /team1/api/competitions/<id>/final-rankings/
 
     Same ordered data as the live leaderboard, but only returned once the
