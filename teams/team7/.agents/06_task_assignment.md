@@ -112,9 +112,9 @@ Sprint 1 totals: **23 points** — **20 Done**, **3 To Do**, **0 In Progress**,
 | `SCRUM-15` | Attachments upload | `AR` | 3 | Done ✅ |
 | `SCRUM-16` | Frontend (HTML/JS) covering both flows | `AR` | 5 | Done ✅ |
 | `SCRUM-17` | CI job for our team | `SN` | 2 | To Do ⬜ |
-| `SCRUM-18` | README + final smoke tests | `AR` | 3 | To Do ⬜ |
+| `SCRUM-18` | README + final smoke tests | `AR` | 3 | In Progress 🟡 |
 
-Sprint 2 totals: **31 points** — **10 Done**, **21 To Do**, **0 In Progress**,
+Sprint 2 totals: **31 points** — **10 Done**, **18 To Do**, **3 In Progress**,
 **0 Testing**.
 
 ### Project totals and allocation
