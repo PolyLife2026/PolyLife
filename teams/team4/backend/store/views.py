@@ -12,6 +12,7 @@ from .serializers import (
     CategorySerializer,
     ProductDetailSerializer,
     ProductListSerializer,
+    ProductWriteSerializer,
 )
 
 from rest_framework.permissions import IsAuthenticated
@@ -97,7 +98,7 @@ class AdminProductListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = ProductDetailSerializer(
+        serializer = ProductWriteSerializer(
             data=request.data
         )
 
