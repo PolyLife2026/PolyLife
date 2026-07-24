@@ -26,6 +26,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -35,6 +36,13 @@ MIDDLEWARE = [
     "team3.middleware.UserHeaderMiddleware",
 ]
 
+
+FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
+FRONTEND_BUILT = (FRONTEND_DIST / "index.html").exists()
+if FRONTEND_BUILT:
+    WHITENOISE_ROOT = FRONTEND_DIST
+    WHITENOISE_INDEX_FILE = True
+    
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
