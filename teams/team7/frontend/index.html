@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#123b35">
+    <title>PolyLife | Coach Space</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand" href="/" aria-label="PolyLife Coach Space">
+          <span class="brand-mark">P</span>
+          <span>PolyLife <b>Coach Space</b></span>
+        </a>
+        <button id="refresh-button" class="button button-quiet" type="button">Refresh</button>
+      </header>
+
+      <main>
+        <section class="hero">
+          <p class="eyebrow">A calmer way to grow</p>
+          <h1>Find the right coach.<br><em>Make time for yourself.</em></h1>
+          <p class="hero-copy">Browse available coaches, reserve an open session, and start a private conversation from one place.</p>
+          <div class="hero-meta">
+            <span id="online-count" class="availability-pill">Checking availability...</span>
+            <span>Authenticated through PolyLife</span>
+          </div>
+        </section>
+
+        <section class="workspace" aria-label="Coach booking workspace">
+          <aside class="coach-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Directory</p>
+                <h2>Meet the coaches</h2>
+              </div>
+              <label class="search-field">
+                <span class="sr-only">Search specialty</span>
+                <input id="specialty-filter" type="search" placeholder="Filter specialty">
+              </label>
+            </div>
+            <div id="coach-list" class="coach-list" aria-live="polite"></div>
+          </aside>
+
+          <section class="detail-panel">
+            <div id="empty-state" class="empty-state">
+              <span class="empty-orbit">+</span>
+              <h2>Select a coach</h2>
+              <p>View their profile, choose an open time, or begin a conversation.</p>
+            </div>
+
+            <div id="coach-detail" hidden>
+              <div class="detail-topline">
+                <p class="eyebrow">Coach profile</p>
+                <span id="detail-online" class="status-dot">Offline</span>
+              </div>
+              <h2 id="detail-name"></h2>
+              <p id="detail-bio" class="detail-bio"></p>
+              <dl class="profile-facts">
+                <div><dt>Specialties</dt><dd id="detail-specialties">-</dd></div>
+                <div><dt>Experience</dt><dd id="detail-experience">-</dd></div>
+                <div><dt>Session rate</dt><dd id="detail-rate">-</dd></div>
+                <div><dt>Community rating</dt><dd id="detail-rating">-</dd></div>
+              </dl>
+
+              <div class="actions-row">
+                <button id="start-chat-button" class="button button-dark" type="button">Open conversation</button>
+                <button id="reload-slots-button" class="button button-quiet" type="button">Reload times</button>
+              </div>
+
+              <section class="slots-section" aria-labelledby="slots-heading">
+                <div class="section-heading compact">
+                  <div>
+                    <p class="eyebrow">Availability</p>
+                    <h3 id="slots-heading">Reserve a time</h3>
+                  </div>
+                </div>
+                <div id="slot-list" class="slot-list"></div>
+              </section>
+
+              <section id="chat-section" class="chat-section" hidden aria-labelledby="chat-heading">
+                <div class="section-heading compact">
+                  <div>
+                    <p class="eyebrow">Private space</p>
+                    <h3 id="chat-heading">Conversation ready</h3>
+                  </div>
+                  <span id="thread-id" class="thread-id"></span>
+                </div>
+                <p class="chat-note">Your chat thread is ready. Text messaging becomes live when the chat service is connected; you can already share a file with your coach.</p>
+                <form id="attachment-form" class="attachment-form">
+                  <label class="file-label" for="attachment-input">Choose an attachment</label>
+                  <input id="attachment-input" name="file" type="file" required>
+                  <button class="button button-dark" type="submit">Share file</button>
+                </form>
+              </section>
+            </div>
+          </section>
+        </section>
+
+        <section class="appointments-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Your schedule</p>
+              <h2>Upcoming appointments</h2>
+            </div>
+            <button id="appointments-button" class="button button-quiet" type="button">Load appointments</button>
+          </div>
+          <div id="appointment-list" class="appointment-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <script src="/app.js" defer></script>
+  </body>
+</html>

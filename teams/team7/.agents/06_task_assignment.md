@@ -110,11 +110,11 @@ Sprint 1 totals: **23 points** — **20 Done**, **3 To Do**, **0 In Progress**,
 | `SCRUM-13` | Ratings endpoint | `SN` | 3 | To Do ⬜ |
 | `SCRUM-14` | Coach online status endpoint | `AR` | 2 | Done ✅ |
 | `SCRUM-15` | Attachments upload | `AR` | 3 | Done ✅ |
-| `SCRUM-16` | Frontend (HTML/JS) covering both flows | `AR` | 5 | To Do ⬜ |
+| `SCRUM-16` | Frontend (HTML/JS) covering both flows | `AR` | 5 | Done ✅ |
 | `SCRUM-17` | CI job for our team | `SN` | 2 | To Do ⬜ |
 | `SCRUM-18` | README + final smoke tests | `AR` | 3 | To Do ⬜ |
 
-Sprint 2 totals: **31 points** — **5 Done**, **26 To Do**, **0 In Progress**,
+Sprint 2 totals: **31 points** — **10 Done**, **21 To Do**, **0 In Progress**,
 **0 Testing**.
 
 ### Project totals and allocation
@@ -123,11 +123,11 @@ Sprint 2 totals: **31 points** — **5 Done**, **26 To Do**, **0 In Progress**,
 |---|---:|---:|---:|---:|---:|
 | `SS` | 15 | 8 | 23 | 15 | 8 |
 | `SN` | 3 | 10 | 13 | 0 | 13 |
-| `AR` | 5 | 13 | 18 | 2 | 16 |
-| **Team** | **23** | **31** | **54** | **17** | **37** |
+| `AR` | 5 | 13 | 18 | 15 | 3 |
+| **Team** | **23** | **31** | **54** | **30** | **24** |
 
-Current project state: **7 of 17 tickets Done**; **17 of 54 points Done
-(31.5%)**. All 10 remaining tickets are `To Do` in the verified snapshot.
+Current project state: **11 of 17 tickets Done**; **30 of 54 points Done
+(55.6%)**. The remaining 6 tickets are `To Do` in the verified snapshot.
 
 ## 4. Dependencies and recommended execution order
 
