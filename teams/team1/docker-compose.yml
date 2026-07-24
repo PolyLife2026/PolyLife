@@ -5,6 +5,7 @@
 #
 # Out of the box only the gateway runs. Uncomment `backend` and `db` as you
 # build your service. Start with:   ./run.ps1   (Windows)   or   ./run.sh
+# Team team1 — deployment.
 services:
   gateway:
     image: nginx:alpine
@@ -15,25 +16,31 @@ services:
     environment:
       - CORE_BASE_URL=${CORE_BASE_URL}  # from .env
     networks: [polylife]
-    # depends_on: [backend]
+    depends_on: [backend]
 
-  # --- Your service (uncomment when ready) ---------------------------------
-  # backend:
-  #   build: .                          # builds this team's Django app
-  #   env_file: .env                    # DB creds & secret key come from .env
-  #   networks: [polylife, team]
-  #
-  # db:
-  #   image: postgres:16-alpine
-  #   env_file: .env                    # POSTGRES_DB/USER/PASSWORD from .env
-  #   volumes: [db-data:/var/lib/postgresql/data]
-  #   networks: [team]
+  backend:
+    build: .                          # builds this team's Django app
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4
+    env_file: .env                    # DB creds & secret key come from .env
+    networks: [polylife, team]
+    volumes:                     
+      - .:/app
+    expose:
+      - "8000"                        # backend exposes port 8000 to the gateway (but not to the outside world)
+    depends_on:
+      - db                            # backend depends on the database being up and running
 
-# volumes:
-#   db-data:
+  db:
+    image: postgres:16-alpine
+    env_file: .env                    # POSTGRES_DB/USER/PASSWORD from .env
+    volumes: [db-data:/var/lib/postgresql/data]
+    networks: [team]
+
+volumes:
+  db-data:
 
 networks:
   polylife:                             # shared with the core (gateway <-> core)
     external: true
     name: polylife_net
-  # team:                               # private app <-> db (uncomment with db)
+  team:                                 # private app <-> db

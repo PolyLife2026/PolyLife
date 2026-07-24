@@ -11,5 +11,16 @@
 # COPY . .
 # EXPOSE 8000
 # CMD ["gunicorn", "yourproject.wsgi:application", "-b", "0.0.0.0:8000"]
+# Team team1 — backend image.
 FROM python:3.12-slim
-CMD ["sh", "-c", "echo 'Team team1: replace this Dockerfile with your service'; sleep infinity"]
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8000
+
+CMD ["gunicorn", "config.wsgi:application", "-b", "0.0.0.0:8000"]
