@@ -1,10 +1,9 @@
 """Chat with-coach HTTP router (SCRUM-8, SCRUM-14, SCRUM-15).
 
-Public, gateway-facing routes are ``/api/chat/...``; the Nginx layer
-prefixes ``/api/`` via ``proxy_pass`` without a URI rewrite, so the
-FastAPI router is mounted at ``prefix="/chat"`` to match the existing
-``/meta`` convention. See ``teams/team7/gateway.conf`` and
-``app/api/meta.py`` for the precedent.
+Public, gateway-facing routes are ``/api/chat/...``. The Nginx gateway
+removes the public ``/api/`` prefix before forwarding requests, so this
+router is mounted at ``prefix="/chat"``. See ``teams/team7/gateway.conf``
+and ``app/api/meta.py`` for the precedent.
 
 This router covers thread management, coach online-status endpoints, and
 thread attachment upload. Messages, WebSocket delivery, and reserve

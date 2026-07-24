@@ -1,10 +1,10 @@
 """Reserve Coach HTTP router (SCRUM-9, SCRUM-12, SCRUM-13).
 
-Public, gateway-facing routes are ``/api/reserve/...``; the Nginx layer
-prefixes ``/api/`` via ``proxy_pass`` without a URI rewrite, so the
-FastAPI router is mounted at ``prefix="/reserve"`` to match the existing
-``/chat`` convention. See ``teams/team7/gateway.conf`` and
-``app/api/chat.py`` for the precedent.
+Public, gateway-facing routes are ``/api/reserve/...``. The Nginx gateway
+removes the public ``/api/`` prefix before forwarding requests, so this
+router is mounted at ``prefix="/reserve"`` to match the existing ``/chat``
+convention. See ``teams/team7/gateway.conf`` and ``app/api/chat.py`` for
+the precedent.
 
 Endpoints (SCRUM-9 — availability):
   GET    /reserve/coaches/{coach_user_id}/availability  — list open slots
