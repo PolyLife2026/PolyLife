@@ -47,3 +47,23 @@ class CoachOnlineStatusUpdateRequest(BaseModel):
     """PATCH body for toggling a coach's online status."""
 
     is_online: bool
+
+
+class ChatAttachmentRead(BaseModel):
+    """Public shape of a chat attachment record."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    message_id: int
+    file_url: str
+    mime_type: str
+    size_bytes: int
+    created_at: datetime
+    updated_at: datetime | None
+
+
+class ChatAttachmentResponse(BaseModel):
+    """Envelope for ``POST /api/chat/threads/{thread_id}/attachments``."""
+
+    data: ChatAttachmentRead

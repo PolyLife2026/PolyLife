@@ -1,4 +1,4 @@
-"""Chat with-coach HTTP router (SCRUM-8, SCRUM-14).
+"""Chat with-coach HTTP router (SCRUM-8, SCRUM-14, SCRUM-15).
 
 Public, gateway-facing routes are ``/api/chat/...``; the Nginx layer
 prefixes ``/api/`` via ``proxy_pass`` without a URI rewrite, so the
@@ -6,19 +6,23 @@ FastAPI router is mounted at ``prefix="/chat"`` to match the existing
 ``/meta`` convention. See ``teams/team7/gateway.conf`` and
 ``app/api/meta.py`` for the precedent.
 
-This router covers thread management and coach online-status endpoints.
-Messages, WebSocket delivery, attachments, and reserve features belong to
-later tickets.
+This router covers thread management, coach online-status endpoints, and
+thread attachment upload. Messages, WebSocket delivery, and reserve
+features belong to later tickets.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from email.message import Message
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
 from app.core.security import CurrentUser, get_current_user
 from app.schemas.chat import (
+    ChatAttachmentRead,
+    ChatAttachmentResponse,
     ChatThreadCreateRequest,
     ChatThreadListResponse,
     ChatThreadRead,
@@ -29,6 +33,68 @@ from app.schemas.reserve import CoachProfileListResponse, CoachProfileRead, Coac
 from app.services import chat as chat_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+def _extract_uploaded_file(request: Request, body: bytes) -> tuple[str, str, bytes]:
+    """Parse the single-file multipart payload used by the attachment upload."""
+
+    content_type = request.headers.get("content-type", "")
+    if not content_type.startswith("multipart/form-data"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Expected multipart/form-data upload.",
+        )
+
+    content_type_message = Message()
+    content_type_message["content-type"] = content_type
+    boundary = content_type_message.get_param("boundary", header="content-type")
+    if not boundary:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Missing multipart boundary.",
+        )
+
+    delimiter = f"--{boundary}".encode()
+    for raw_part in body.split(delimiter):
+        # Remove only the multipart framing. ``strip()`` would corrupt a
+        # legitimate file whose first or final bytes are whitespace.
+        part = raw_part[2:] if raw_part.startswith(b"\r\n") else raw_part
+        if not part or part == b"--":
+            continue
+        if part.endswith(b"--"):
+            part = part[:-2].rstrip(b"\r\n")
+
+        header_block, separator, content = part.partition(b"\r\n\r\n")
+        if not separator:
+            continue
+
+        headers: dict[str, str] = {}
+        for line in header_block.split(b"\r\n"):
+            if b":" not in line:
+                continue
+            name, value = line.split(b":", 1)
+            headers[name.decode("utf-8").strip().lower()] = value.decode("utf-8").strip()
+
+        disposition_message = Message()
+        disposition_message["content-disposition"] = headers.get("content-disposition", "")
+        if disposition_message.get_content_disposition() != "form-data":
+            continue
+        if disposition_message.get_param("name", header="content-disposition") != "file":
+            continue
+
+        filename = (
+            disposition_message.get_param("filename", header="content-disposition")
+            or "attachment.bin"
+        )
+        mime_type = headers.get("content-type", "application/octet-stream")
+        if content.endswith(b"\r\n"):
+            content = content[:-2]
+        return filename, mime_type, content
+
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail="Multipart field 'file' is required.",
+    )
 
 
 @router.get("/threads", response_model=ChatThreadListResponse)
@@ -101,3 +167,47 @@ async def update_my_online_status(
         payload=payload,
     )
     return CoachProfileResponse(data=CoachProfileRead.model_validate(row))
+
+
+@router.post(
+    "/threads/{thread_id}/attachments",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ChatAttachmentResponse,
+)
+async def upload_thread_attachment(
+    thread_id: int,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> ChatAttachmentResponse:
+    """Upload a file attachment to a chat thread."""
+
+    thread = await chat_service.get_active_thread(session, thread_id)
+    if thread is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chat thread not found.",
+        )
+    if current_user.id not in (thread.user_id, thread.coach_user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not a participant in this chat thread.",
+        )
+
+    body = await request.body()
+    filename, mime_type, content = _extract_uploaded_file(request, body)
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Uploaded file is empty.",
+        )
+
+    attachment = await chat_service.create_thread_attachment(
+        session,
+        thread=thread,
+        sender_user_id=current_user.id,
+        filename=filename,
+        mime_type=mime_type,
+        content=content,
+    )
+    return ChatAttachmentResponse(data=ChatAttachmentRead.model_validate(attachment))
