@@ -96,10 +96,10 @@ one happy-path endpoint for each service.
 | `SCRUM-7` | `X-User-Id` dependency + smoke test | `SS` | 2 | Done ✅ |
 | `SCRUM-8` | Chat: list/create threads | `SS` | 3 | Done ✅ |
 | `SCRUM-9` | Reserve: list/create availability | `SN` | 3 | To Do ⬜ |
-| `SCRUM-10` | Nginx gateway: extend with WebSocket route for `/api/chat/ws` | `AR` | 3 | To Do ⬜ |
+| `SCRUM-10` | Nginx gateway: extend with WebSocket route for `/api/chat/ws` | `AR` | 3 | Done ✅ |
 
-Sprint 1 totals: **23 points** — **17 Done**, **6 To Do**, **0 In Progress**,
-**0 Testing**. Completion by points: **73.9%**.
+Sprint 1 totals: **23 points** — **20 Done**, **3 To Do**, **0 In Progress**,
+**0 Testing**. Completion by points: **87.0%**.
 
 ### Sprint 2 — complete features, CI, frontend, and final verification
 
@@ -108,13 +108,13 @@ Sprint 1 totals: **23 points** — **17 Done**, **6 To Do**, **0 In Progress**,
 | `SCRUM-11` | Chat WebSocket + Redis pub/sub | `SS` | 8 | To Do ⬜ |
 | `SCRUM-12` | Reserve atomic booking + double-book test | `SN` | 5 | To Do ⬜ |
 | `SCRUM-13` | Ratings endpoint | `SN` | 3 | To Do ⬜ |
-| `SCRUM-14` | Coach online status endpoint | `AR` | 2 | To Do ⬜ |
-| `SCRUM-15` | Attachments upload | `AR` | 3 | To Do ⬜ |
+| `SCRUM-14` | Coach online status endpoint | `AR` | 2 | Done ✅ |
+| `SCRUM-15` | Attachments upload | `AR` | 3 | Done ✅ |
 | `SCRUM-16` | Frontend (HTML/JS) covering both flows | `AR` | 5 | To Do ⬜ |
 | `SCRUM-17` | CI job for our team | `SN` | 2 | To Do ⬜ |
 | `SCRUM-18` | README + final smoke tests | `AR` | 3 | To Do ⬜ |
 
-Sprint 2 totals: **31 points** — **0 Done**, **31 To Do**, **0 In Progress**,
+Sprint 2 totals: **31 points** — **5 Done**, **26 To Do**, **0 In Progress**,
 **0 Testing**.
 
 ### Project totals and allocation
