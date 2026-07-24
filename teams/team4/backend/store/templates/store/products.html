@@ -1,0 +1,226 @@
+{% extends "store/base.html" %}
+{% block title %}محصولات — PolyLife{% endblock %}
+
+{% block extra_css %}
+.layout { display: grid; grid-template-columns: 220px 1fr; gap: 1.2rem; align-items: start; }
+.filters { background: #fff; border-radius: 12px; padding: 1.1rem; border: 1px solid var(--gray); position: sticky; top: 70px; }
+.filters h3 { font-size: 1rem; color: var(--primary); margin-bottom: .85rem; font-weight: 700; }
+.filter-group { margin-bottom: 1rem; }
+.filter-group label { display: block; font-size: .82rem; color: #555; margin-bottom: .25rem; }
+.filter-group input, .filter-group select {
+  width: 100%;
+  padding: .4rem .6rem;
+  border: 1px solid var(--gray);
+  border-radius: 6px;
+  font-family: 'Vazirmatn', sans-serif;
+  font-size: .83rem;
+}
+.price-row { display: flex; gap: .4rem; }
+.price-row input { flex: 1; }
+.products-list { display: flex; flex-direction: column; gap: .85rem; }
+.prod-row {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--gray);
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  align-items: flex-start;
+  transition: box-shadow .2s;
+}
+.prod-row:hover { box-shadow: 0 4px 16px rgba(24,94,100,.12); }
+.prod-thumb-sm {
+  width: 100px; height: 100px;
+  background: var(--p-vlight);
+  border-radius: 8px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem;
+  overflow: hidden;
+}
+.prod-thumb-sm img { width: 100%; height: 100%; object-fit: cover; }
+.prod-info { flex: 1; }
+.prod-info h3 { font-size: .95rem; margin-bottom: .2rem; }
+.prod-meta { display: flex; gap: .8rem; flex-wrap: wrap; margin-bottom: .4rem; }
+.badge {
+  background: var(--p-vlight);
+  color: var(--primary);
+  padding: .15rem .55rem;
+  border-radius: 20px;
+  font-size: .75rem;
+  font-weight: 600;
+}
+.prod-actions { display: flex; gap: .5rem; margin-top: .6rem; flex-wrap: wrap; }
+.pagination { display: flex; gap: .4rem; justify-content: center; margin-top: 1.2rem; }
+.page-btn {
+  padding: .35rem .75rem;
+  border: 1px solid var(--gray);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: .85rem;
+  font-family: 'Vazirmatn', sans-serif;
+}
+.page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.page-btn:hover:not(.active) { background: var(--p-vlight); }
+{% endblock %}
+
+{% block content %}
+<h2 class="page-title">محصولات</h2>
+<div class="layout">
+  <!-- Sidebar Filters (SP-2 T4) -->
+  <aside class="filters">
+    <h3>🔍 فیلترها</h3>
+    <div class="filter-group">
+      <label>جستجو</label>
+      <input id="f-search" type="text" placeholder="نام یا برند...">
+    </div>
+    <div class="filter-group">
+      <label>دسته‌بندی</label>
+      <select id="f-cat">
+        <option value="">همه</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>برند</label>
+      <input id="f-brand" type="text" placeholder="مثال: ON">
+    </div>
+    <div class="filter-group">
+      <label>نوع ورزش</label>
+      <input id="f-sport" type="text" placeholder="مثال: بدنسازی">
+    </div>
+    <div class="filter-group">
+      <label>بازه قیمت (تومان)</label>
+      <div class="price-row">
+        <input id="f-min" type="number" placeholder="از">
+        <input id="f-max" type="number" placeholder="تا">
+      </div>
+    </div>
+    <div class="filter-group">
+      <label>حداقل امتیاز</label>
+      <select id="f-rating">
+        <option value="">همه</option>
+        <option value="4">۴ ستاره+</option>
+        <option value="3">۳ ستاره+</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-full mt-1" onclick="applyFilters()">اعمال فیلتر</button>
+    <button class="btn btn-outline btn-full mt-1" onclick="resetFilters()">پاک کردن</button>
+  </aside>
+
+  <!-- Product List -->
+  <section>
+    <div id="prod-list"><div class="spinner"></div></div>
+    <div class="pagination" id="pagination"></div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentPage = 1;
+
+// Read URL params on load
+const params = new URLSearchParams(window.location.search);
+if (params.get('search'))   document.getElementById('f-search').value = params.get('search');
+if (params.get('category')) document.getElementById('f-cat').value    = params.get('category');
+
+function buildQuery(page = 1) {
+  const q = new URLSearchParams();
+  const s  = document.getElementById('f-search').value.trim();
+  const ct = document.getElementById('f-cat').value;
+  const br = document.getElementById('f-brand').value.trim();
+  const sp = document.getElementById('f-sport').value.trim();
+  const mn = document.getElementById('f-min').value;
+  const mx = document.getElementById('f-max').value;
+  const rt = document.getElementById('f-rating').value;
+  if (s)  q.set('search',    s);
+  if (ct) q.set('category',  ct);
+  if (br) q.set('brand',     br);
+  if (sp) q.set('sport_type',sp);
+  if (mn) q.set('min_price', mn);
+  if (mx) q.set('max_price', mx);
+  if (rt) q.set('min_rating',rt);
+  q.set('page', page);
+  return q.toString();
+}
+
+function applyFilters() { currentPage = 1; loadProducts(); }
+function resetFilters()  {
+  ['f-search','f-brand','f-sport','f-min','f-max'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-cat').value    = '';
+  document.getElementById('f-rating').value = '';
+  applyFilters();
+}
+
+async function loadCategories() {
+  try {
+    const r = await fetch('/api/store/categories/');
+    const d = await r.json();
+    const list = d.results ?? d;
+    const sel = document.getElementById('f-cat');
+    list.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id; opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+    // restore from URL
+    if (params.get('category')) sel.value = params.get('category');
+  } catch {}
+}
+
+async function loadProducts() {
+  const el = document.getElementById('prod-list');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const r = await fetch('/api/store/products/?' + buildQuery(currentPage));
+    const d = await r.json();
+    const list = d.results ?? d;
+    const count = d.count ?? list.length;
+
+    if (!list.length) {
+      el.innerHTML = '<p class="alert alert-info">محصولی با این فیلترها یافت نشد.</p>';
+      document.getElementById('pagination').innerHTML = '';
+      return;
+    }
+
+    el.innerHTML = list.map(p => `
+      <div class="prod-row">
+        <div class="prod-thumb-sm">
+          ${p.image ? `<img src="${p.image}" alt="${p.name}">` : (p.image_url ? `<img src="${p.image_url}" alt="${p.name}">` : '🏋️')}
+        </div>
+        <div class="prod-info">
+          <h3>${p.name}</h3>
+          <div class="prod-meta">
+            ${p.brand ? `<span class="badge">${p.brand}</span>` : ''}
+            ${p.sport_type ? `<span class="badge">⚽ ${p.sport_type}</span>` : ''}
+            <span class="badge">⭐ ${p.rating}</span>
+            <span class="badge ${p.stock_quantity > 0 ? '' : 'badge-out'}">${p.stock_quantity > 0 ? '✅ موجود' : '❌ ناموجود'}</span>
+          </div>
+          <p class="fw-bold text-primary" style="font-size:1.05rem">${price(p.price)}</p>
+          <div class="prod-actions">
+            <a href="/store/products/${p.id}/" class="btn btn-primary btn-sm">مشاهده</a>
+            ${p.supplement_id ? `<a href="/supplements/${p.supplement_id}/" class="btn btn-outline btn-sm">💊 اطلاعات علمی</a>` : ''}
+          </div>
+        </div>
+      </div>`).join('');
+
+    // pagination
+    const pageSize = 20;
+    const totalPages = Math.ceil(count / pageSize);
+    const pg = document.getElementById('pagination');
+    pg.innerHTML = '';
+    for (let i = 1; i <= totalPages; i++) {
+      const b = document.createElement('button');
+      b.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+      b.textContent = i;
+      b.onclick = () => { currentPage = i; loadProducts(); window.scrollTo(0, 0); };
+      pg.appendChild(b);
+    }
+  } catch { el.innerHTML = '<p class="alert alert-error">خطا در بارگذاری محصولات</p>'; }
+}
+
+loadCategories();
+loadProducts();
+</script>
+{% endblock %}
