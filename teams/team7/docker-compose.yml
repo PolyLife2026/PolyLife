@@ -22,6 +22,10 @@ services:
   backend:
     build: ./backend                   # builds the Team 7 FastAPI service
     env_file: .env                    # DB creds & secret key come from .env
+    command:
+      - sh
+      - -c
+      - alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000
     networks: [polylife, team]        # polylife -> reaches core; team -> reaches db + redis
     depends_on:
       db:

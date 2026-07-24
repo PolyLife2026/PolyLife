@@ -33,8 +33,9 @@ WORKDIR /app
 # Create a non-root user for the runtime.
 RUN groupadd --system app && useradd --system --gid app --home /app app
 
-# Keep pytest's cache outside /app (read-only for the non-root user).
-ENV PYTEST_CACHE_DIR=/tmp/.pytest_cache
+# Keep tool caches outside /app (read-only for the non-root user).
+ENV PYTEST_CACHE_DIR=/tmp/.pytest_cache \
+    RUFF_CACHE_DIR=/tmp/.ruff_cache
 
 # Copy the prepared virtual environment and project files from the builder.
 COPY --from=builder /app /app

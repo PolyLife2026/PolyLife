@@ -11,6 +11,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   margin: 0;
   color: var(--ink);
@@ -23,6 +24,8 @@ button { cursor: pointer; }
 .page-shell { min-height: 100vh; background: radial-gradient(circle at 80% 5%, var(--cream) 0, transparent 28rem), linear-gradient(140deg, var(--paper) 0%, #cdf1f4 100%); }
 .site-header, main { width: min(1160px, calc(100% - 40px)); margin: auto; }
 .site-header { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; }
+.header-actions { display: flex; align-items: center; gap: 9px; }
+.auth-user { color: var(--muted); font-size: .78rem; }
 .brand { color: var(--ink); display: flex; align-items: center; gap: 10px; text-decoration: none; font-size: 1.08rem; letter-spacing: -0.03em; }
 .brand b { color: var(--leaf); font-weight: normal; }
 .brand-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50% 50% 50% 9px; background: var(--leaf); color: #fff; font-weight: normal; }
@@ -35,6 +38,17 @@ h2 { margin-bottom: 0; font-size: 1.65rem; font-weight: normal; letter-spacing: 
 h3 { margin-bottom: 0; font-size: 1.25rem; font-weight: normal; }
 .hero-copy { max-width: 590px; color: var(--muted); font-size: 1.1rem; line-height: 1.65; }
 .hero-meta { display: flex; align-items: center; gap: 20px; color: var(--muted); font-size: .9rem; }
+.auth-panel { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(280px, .75fr); gap: 54px; width: min(1040px, calc(100% - 40px)); margin: 68px auto; border: 1px solid var(--line); border-radius: 28px; background: var(--paper); box-shadow: var(--shadow); padding: clamp(28px, 6vw, 72px); }
+.auth-copy { align-self: center; }
+.auth-copy h1 { margin-bottom: 24px; font-size: clamp(2.7rem, 6vw, 5rem); }
+.auth-copy p:last-child { max-width: 570px; color: var(--muted); line-height: 1.7; }
+.login-form { display: grid; gap: 18px; align-content: center; border-radius: 20px; background: var(--leaf-pale); padding: 28px; }
+.login-form label { display: grid; gap: 7px; color: var(--ink); font-size: .82rem; }
+.login-form input { width: 100%; border: 1px solid var(--ink); border-radius: 12px; outline: 0; background: var(--paper); color: #000; padding: 12px 14px; }
+.login-form input:focus { box-shadow: 0 0 0 3px #cdf1f4; }
+.login-form .button { justify-self: start; }
+.login-form small { color: var(--muted); line-height: 1.5; }
+.login-error { margin: -4px 0 0; color: #000; font-size: .82rem; }
 .availability-pill, .status-dot { border-radius: 999px; background: var(--leaf-pale); color: var(--leaf); padding: 7px 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .75rem; }
 .workspace { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(0, 1.35fr); overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: var(--paper); box-shadow: var(--shadow); }
 .coach-panel, .detail-panel, .appointments-section { padding: 30px; }
@@ -83,6 +97,10 @@ h3 { margin-bottom: 0; font-size: 1.25rem; font-weight: normal; }
 
 @media (max-width: 760px) {
   .site-header, main { width: min(100% - 28px, 1160px); }
+  .site-header { align-items: flex-start; gap: 18px; }
+  .header-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .auth-user { width: 100%; text-align: right; }
+  .auth-panel { grid-template-columns: 1fr; gap: 24px; width: min(100% - 28px, 1040px); margin: 32px auto; padding: 26px; }
   .hero { padding: 45px 0; }
   .workspace { grid-template-columns: 1fr; }
   .coach-panel { border-right: 0; border-bottom: 1px solid var(--line); }

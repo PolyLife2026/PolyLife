@@ -17,10 +17,10 @@ import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from decimal import Decimal
 
-# Point the app at an in-memory SQLite before any of the application's
-# modules import `app.core.config` / `app.core.db` (both create their
-# engine at import time using ``settings.database_url``).
-os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+# Always isolate tests from the Compose/PostgreSQL DATABASE_URL. This must be
+# assigned, not setdefault(), because `docker compose run` injects `.env`
+# before pytest imports this module.
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ.setdefault("URL_REDIS", "redis://localhost:6379/0")
 os.environ.setdefault("CORE_BASE_URL", "http://core:8000")
 os.environ.setdefault("LOG_LEVEL", "info")
