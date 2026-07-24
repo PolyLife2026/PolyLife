@@ -1,3 +1,4 @@
+from urllib import request
 from django.urls import reverse
 from django_filters import rest_framework as django_filters
 from django_filters.rest_framework import DjangoFilterBackend
@@ -6,6 +7,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.shortcuts import render
 from django.http import HttpResponseForbidden
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from .models import Category, Product
 from .serializers import (
@@ -78,6 +80,7 @@ class ProductDetailView(generics.RetrieveAPIView):
     
 class AdminProductListCreateView(APIView):
     permission_classes = [IsTeam4Admin]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request):
         products = Product.objects.all()
@@ -88,11 +91,14 @@ class AdminProductListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
+        print("FILES:", request.FILES)
+        print("DATA:", request.data)
         serializer = ProductDetailSerializer(
             data=request.data
         )
 
         if serializer.is_valid():
+            print("VALIDATED:", serializer.validated_data)
             serializer.save()
             return Response(
                 serializer.data,
@@ -151,7 +157,7 @@ class AdminStockUpdateView(APIView):
     
 
 class AdminProductDetailView(APIView):
-    permission_classes = [IsTeam4Admin]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_object(self, pk):
         return Product.objects.filter(id=pk).first()
@@ -170,6 +176,8 @@ class AdminProductDetailView(APIView):
 
 
     def put(self, request, pk):
+        print("PUT FILES:", request.FILES)
+        print("PUT DATA:", request.data)
         product = self.get_object(pk)
 
         if not product:
@@ -183,8 +191,10 @@ class AdminProductDetailView(APIView):
             data=request.data,
             partial=True
         )
-
+        print("FILES:", request.FILES)
+        print("DATA:", request.data)
         if serializer.is_valid():
+            print("VALIDATED:", serializer.validated_data)
             serializer.save()
 
             return Response(
@@ -250,18 +260,12 @@ def check_admin_page(request):
 
 
 def admin_dashboard(request):
-    if not check_admin_page(request):
-        return HttpResponseForbidden("Access denied")   
     return render(
         request,
         "store/admin/dashboard.html"
     )
-def admin_products_page(request):
 
-    if not check_admin_page(request):
-        return HttpResponseForbidden(
-            "Access denied"
-        )
+def admin_products_page(request):
 
     return render(
         request,
@@ -272,11 +276,6 @@ def admin_products_page(request):
 
 def admin_orders_page(request):
 
-    if not check_admin_page(request):
-        return HttpResponseForbidden(
-            "Access denied"
-        )
-
     return render(
         request,
         "store/admin/orders.html"
@@ -286,25 +285,12 @@ def admin_orders_page(request):
 
 def admin_discounts_page(request):
 
-    if not check_admin_page(request):
-        return HttpResponseForbidden(
-            "Access denied"
-        )
-
     return render(
         request,
         "store/admin/discounts.html"
     )
 
 def admin_supplements_page(request):
-
-    if not check_admin_page(request):
-        return HttpResponseForbidden(
-            """
-            <h1>Access Denied</h1>
-            <p>You do not have permission to access this page.</p>
-            """
-        )
 
     return render(
         request,
