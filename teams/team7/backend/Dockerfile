@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1.7
 
 # ---------- Stage 1: build dependencies with uv --------------------------------
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS builder
+# Astral removed the Bookworm-derived images; Trixie is the supported
+# Python 3.12 base for current uv releases.
+FROM ghcr.io/astral-sh/uv:python3.12-trixie AS builder
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
     UV_PYTHON_DOWNLOADS=never
