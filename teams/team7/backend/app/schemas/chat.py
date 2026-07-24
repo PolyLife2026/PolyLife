@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChatThreadRead(BaseModel):
@@ -84,7 +84,29 @@ class ChatMessageRead(BaseModel):
     updated_at: datetime | None
 
 
+class ChatMessageCreateRequest(BaseModel):
+    """POST body for sending a text message to a thread."""
+
+    body: str = Field(min_length=1, max_length=8000)
+
+    @field_validator("body")
+    @classmethod
+    def body_must_contain_text(cls, value: str) -> str:
+        """Reject whitespace-only messages and store the trimmed body."""
+
+        body = value.strip()
+        if not body:
+            raise ValueError("Message body cannot be empty.")
+        return body
+
+
+class ChatMessageListResponse(BaseModel):
+    """Envelope for ``GET /api/chat/threads/{thread_id}/messages``."""
+
+    data: list[ChatMessageRead]
+
+
 class ChatMessageResponse(BaseModel):
-    """Envelope for single-message responses (e.g. mark-as-read)."""
+    """Envelope for single-message responses."""
 
     data: ChatMessageRead

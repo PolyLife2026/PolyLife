@@ -5,9 +5,9 @@ removes the public ``/api/`` prefix before forwarding requests, so this
 router is mounted at ``prefix="/chat"``. See ``teams/team7/gateway.conf``
 and ``app/api/meta.py`` for the precedent.
 
-This router covers thread management, coach online-status endpoints, and
-thread attachment upload. Messages, WebSocket delivery, and reserve
-features belong to later tickets.
+This router covers thread management, REST message history/sending, coach
+online-status endpoints, and thread attachment upload. WebSocket delivery
+remains available for clients that can forward authentication headers.
 """
 
 from __future__ import annotations
@@ -23,6 +23,8 @@ from app.core.security import CurrentUser, get_current_user
 from app.schemas.chat import (
     ChatAttachmentRead,
     ChatAttachmentResponse,
+    ChatMessageCreateRequest,
+    ChatMessageListResponse,
     ChatMessageRead,
     ChatMessageResponse,
     ChatThreadCreateRequest,
@@ -144,6 +146,98 @@ async def open_or_fetch_thread(
     return ChatThreadResponse(data=ChatThreadRead.model_validate(thread))
 
 
+async def _require_thread_participant(
+    session: AsyncSession,
+    *,
+    thread_id: int,
+    user_id: int,
+):
+    """Return an active thread or raise the public access error."""
+
+    thread = await chat_service.get_active_thread(session, thread_id)
+    if thread is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chat thread not found.",
+        )
+    if user_id not in (thread.user_id, thread.coach_user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not a participant in this chat thread.",
+        )
+    return thread
+
+
+@router.get(
+    "/threads/{thread_id}/messages",
+    response_model=ChatMessageListResponse,
+)
+async def list_thread_messages(
+    thread_id: int,
+    current_user: CurrentUser = Depends(get_current_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> ChatMessageListResponse:
+    """Return the persisted message history for a thread participant."""
+
+    await _require_thread_participant(
+        session,
+        thread_id=thread_id,
+        user_id=current_user.id,
+    )
+    rows = await chat_service.list_thread_messages(session, thread_id)
+    return ChatMessageListResponse(
+        data=[ChatMessageRead.model_validate(row) for row in rows]
+    )
+
+
+@router.post(
+    "/threads/{thread_id}/messages",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ChatMessageResponse,
+)
+async def send_thread_message(
+    thread_id: int,
+    payload: ChatMessageCreateRequest,
+    current_user: CurrentUser = Depends(get_current_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> ChatMessageResponse:
+    """Persist a text message and notify connected WebSocket clients."""
+
+    thread = await _require_thread_participant(
+        session,
+        thread_id=thread_id,
+        user_id=current_user.id,
+    )
+    message = await chat_ws_service.persist_chat_message(
+        session,
+        thread=thread,
+        sender_user_id=current_user.id,
+        body=payload.body,
+    )
+    await session.commit()
+    await session.refresh(message)
+
+    try:
+        redis_client = get_redis_client()
+        await publish_event(
+            redis_client,
+            channel=thread_channel(thread.id),
+            event="message.created",
+            data={
+                "id": message.id,
+                "thread_id": message.thread_id,
+                "sender_user_id": message.sender_user_id,
+                "body": message.body,
+                "sent_at": message.sent_at.isoformat(),
+            },
+        )
+    except Exception:
+        # Persistence is authoritative; live fan-out is best effort.
+        pass
+
+    return ChatMessageResponse(data=ChatMessageRead.model_validate(message))
+
+
 @router.get("/coaches/online", response_model=CoachProfileListResponse)
 async def list_online_coaches(
     _current_user: CurrentUser = Depends(get_current_user),  # noqa: B008
@@ -186,17 +280,11 @@ async def upload_thread_attachment(
 ) -> ChatAttachmentResponse:
     """Upload a file attachment to a chat thread."""
 
-    thread = await chat_service.get_active_thread(session, thread_id)
-    if thread is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat thread not found.",
-        )
-    if current_user.id not in (thread.user_id, thread.coach_user_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not a participant in this chat thread.",
-        )
+    thread = await _require_thread_participant(
+        session,
+        thread_id=thread_id,
+        user_id=current_user.id,
+    )
 
     body = await request.body()
     filename, mime_type, content = _extract_uploaded_file(request, body)
@@ -233,17 +321,11 @@ async def mark_message_as_read(
     best-effort: the REST call succeeds even if Redis is temporarily
     unavailable.
     """
-    thread = await chat_service.get_active_thread(session, thread_id)
-    if thread is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat thread not found.",
-        )
-    if current_user.id not in (thread.user_id, thread.coach_user_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not a participant in this chat thread.",
-        )
+    thread = await _require_thread_participant(
+        session,
+        thread_id=thread_id,
+        user_id=current_user.id,
+    )
 
     message = await chat_ws_service.mark_message_read(
         session,

@@ -28,12 +28,17 @@
 |--------|------|------|-------------|
 | `GET` | `/chat/threads` | user | List the current user's chat threads (sorted by `last_message_at` desc). |
 | `POST` | `/chat/threads` | user | Open or fetch a thread with `{coach_user_id}`. |
-| `GET` | `/chat/threads/{thread_id}/messages` | user or coach in thread | Paginate messages (cursor-based, 50/page). |
-| `POST` | `/chat/threads/{thread_id}/messages` | user or coach in thread | Send a text message. |
+| `GET` | `/chat/threads/{thread_id}/messages` | user or coach in thread | List active messages in chronological order. |
+| `POST` | `/chat/threads/{thread_id}/messages` | user or coach in thread | Send and persist a text message (`body`: 1–8000 non-whitespace characters). |
 | `POST` | `/chat/threads/{thread_id}/messages/{message_id}/read` | recipient | Mark a message as read. |
 | `POST` | `/chat/threads/{thread_id}/attachments` | user or coach in thread | Upload a file (multipart). |
 | `GET` | `/chat/coaches/online` | user | List coaches currently marked `is_online = true`. |
 | `PATCH` | `/chat/coaches/me/status` | coach | Toggle `is_online`. Body: `{"is_online": true}`. |
+
+The browser frontend uses the two REST message routes for authenticated
+history and sending. Successful sends also publish the same
+`message.created` Redis event used by WebSocket clients, so both transports
+share one persistence model.
 
 ### 1.2 WebSocket endpoint
 

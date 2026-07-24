@@ -214,6 +214,23 @@ async def get_active_thread(session: AsyncSession, thread_id: int) -> ChatThread
     return result.scalar_one_or_none()
 
 
+async def list_thread_messages(
+    session: AsyncSession, thread_id: int
+) -> Sequence[ChatMessage]:
+    """Return active messages in chronological order for one thread."""
+
+    stmt = (
+        select(ChatMessage)
+        .where(
+            ChatMessage.thread_id == thread_id,
+            ChatMessage.is_deleted.is_(False),
+        )
+        .order_by(ChatMessage.sent_at.asc(), ChatMessage.id.asc())
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
 async def create_thread_attachment(
     session: AsyncSession,
     *,

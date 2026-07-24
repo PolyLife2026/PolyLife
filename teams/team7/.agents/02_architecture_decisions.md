@@ -85,6 +85,15 @@ Two viable transports:
 **Decision:** **WebSocket** for chat (P1 explicitly says "when a new message
 arrives, notify the user"), REST for everything else.
 
+**Browser transport clarification (2026-07-24):** The browser UI sends and
+loads persisted text messages over authenticated REST, while WebSocket
+remains the real-time transport for clients that can forward auth headers.
+The native browser `WebSocket` constructor cannot attach the
+`Authorization: Bearer ...` header held in localStorage. Passing that token
+in the URL would leak credentials into logs and history, so we do not do
+that. REST sends publish the same `message.created` Redis event, preserving
+compatibility with authenticated WebSocket consumers.
+
 ### 2.4 Inter-service communication with Core
 - We will use **REST** where we only need to call Core from our backend (rare —
   we mostly receive auth context, we don't query Core).
