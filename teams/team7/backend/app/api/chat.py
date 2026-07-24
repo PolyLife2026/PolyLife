@@ -1,4 +1,4 @@
-"""Chat with-coach HTTP router (SCRUM-8).
+"""Chat with-coach HTTP router (SCRUM-8, SCRUM-14).
 
 Public, gateway-facing routes are ``/api/chat/...``; the Nginx layer
 prefixes ``/api/`` via ``proxy_pass`` without a URI rewrite, so the
@@ -6,9 +6,9 @@ FastAPI router is mounted at ``prefix="/chat"`` to match the existing
 ``/meta`` convention. See ``teams/team7/gateway.conf`` and
 ``app/api/meta.py`` for the precedent.
 
-This router is intentionally narrow: only the two endpoints in the
-SCRUM-8 contract are implemented. Messages, WebSocket, attachments,
-presence, and reserve features belong to later tickets.
+This router covers thread management and coach online-status endpoints.
+Messages, WebSocket delivery, attachments, and reserve features belong to
+later tickets.
 """
 
 from __future__ import annotations
@@ -23,7 +23,9 @@ from app.schemas.chat import (
     ChatThreadListResponse,
     ChatThreadRead,
     ChatThreadResponse,
+    CoachOnlineStatusUpdateRequest,
 )
+from app.schemas.reserve import CoachProfileListResponse, CoachProfileRead, CoachProfileResponse
 from app.services import chat as chat_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -70,3 +72,32 @@ async def open_or_fetch_thread(
         status.HTTP_201_CREATED if created else status.HTTP_200_OK
     )
     return ChatThreadResponse(data=ChatThreadRead.model_validate(thread))
+
+
+@router.get("/coaches/online", response_model=CoachProfileListResponse)
+async def list_online_coaches(
+    _current_user: CurrentUser = Depends(get_current_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> CoachProfileListResponse:
+    """List coaches currently marked as online."""
+
+    rows = await chat_service.list_online_coaches(session)
+    return CoachProfileListResponse(
+        data=[CoachProfileRead.model_validate(row) for row in rows]
+    )
+
+
+@router.patch("/coaches/me/status", response_model=CoachProfileResponse)
+async def update_my_online_status(
+    payload: CoachOnlineStatusUpdateRequest,
+    current_user: CurrentUser = Depends(get_current_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> CoachProfileResponse:
+    """Toggle the caller's online status."""
+
+    row = await chat_service.update_current_coach_status(
+        session,
+        coach_user_id=current_user.id,
+        payload=payload,
+    )
+    return CoachProfileResponse(data=CoachProfileRead.model_validate(row))

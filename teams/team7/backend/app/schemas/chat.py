@@ -41,3 +41,9 @@ class ChatThreadResponse(BaseModel):
     """Envelope for ``POST /api/chat/threads``."""
 
     data: ChatThreadRead
+
+
+class CoachOnlineStatusUpdateRequest(BaseModel):
+    """PATCH body for toggling a coach's online status."""
+
+    is_online: bool
