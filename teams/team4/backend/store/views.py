@@ -239,7 +239,7 @@ def product_share_link(request, pk):
             status=status.HTTP_404_NOT_FOUND,
         )
 
-    product_path = f"/api/store/products/{product.pk}/"
+    product_path = f"/store/products/{product.pk}/"
 
     share_url = request.build_absolute_uri(
         product_path
