@@ -45,6 +45,15 @@ Browser
 > `auth_request_set` lines in `gateway.conf` literally copy Core's response
 > headers into the proxied request. Trust those headers — that's what the
 > PDF says, and the repo's `teams/team7/README.md` repeats it.
+>
+> **Frontend token handoff:** Core's SPA stores JWTs in `localStorage`, which
+> is isolated by origin (including port). A page on `localhost:9107` therefore
+> cannot read a token created on `localhost:8000`. Team 7 exposes an
+> unauthenticated same-origin `/auth/...` gateway proxy to Core's `/api/...`
+> auth endpoints. The Coach Space login stores the returned access/refresh
+> tokens under Core's standard keys and sends `Authorization: Bearer ...` to
+> protected `/api/...` requests. Authentication failures remain JSON `401`
+> responses; they are not redirected across origins.
 
 ## 2. Tech-stack decisions
 

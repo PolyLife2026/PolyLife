@@ -210,7 +210,10 @@ Then run one of the wrappers:
 
 The wrappers execute `docker compose up --build`. Then open
 `http://localhost:9107` to use the Coach Space dashboard. The backend applies
-all pending Alembic migrations before Uvicorn starts.
+all pending Alembic migrations before Uvicorn starts. Sign in from the Coach
+Space page with a PolyLife account; the gateway proxies `/auth/...` to Core so
+the frontend can store and refresh its own Bearer token without a cross-origin
+redirect.
 
 The intended services are:
 

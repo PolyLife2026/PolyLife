@@ -1,7 +1,22 @@
 const api = "/api";
-const state = { coaches: [], selectedCoach: null, threadId: null };
+const authApi = "/auth";
+const ACCESS_KEY = "polylife_token";
+const REFRESH_KEY = "polylife_refresh";
+const USER_KEY = "polylife_username";
+const state = { coaches: [], selectedCoach: null, threadId: null, refreshing: null };
 
 const elements = {
+  appMain: document.querySelector("#app-main"),
+  authPanel: document.querySelector("#auth-panel"),
+  authButton: document.querySelector("#auth-button"),
+  authUser: document.querySelector("#auth-user"),
+  authSummary: document.querySelector("#auth-summary"),
+  refreshButton: document.querySelector("#refresh-button"),
+  loginForm: document.querySelector("#login-form"),
+  loginButton: document.querySelector("#login-button"),
+  loginUsername: document.querySelector("#login-username"),
+  loginPassword: document.querySelector("#login-password"),
+  loginError: document.querySelector("#login-error"),
   coachList: document.querySelector("#coach-list"),
   specialtyFilter: document.querySelector("#specialty-filter"),
   onlineCount: document.querySelector("#online-count"),
@@ -23,23 +38,147 @@ const elements = {
   toast: document.querySelector("#toast"),
 };
 
-async function request(path, options = {}) {
+function accessToken() {
+  return localStorage.getItem(ACCESS_KEY);
+}
+
+function clearAuth() {
+  localStorage.removeItem(ACCESS_KEY);
+  localStorage.removeItem(REFRESH_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
+function showLogin(message = "") {
+  elements.appMain.hidden = true;
+  elements.authPanel.hidden = false;
+  elements.refreshButton.hidden = true;
+  elements.authButton.textContent = "Sign in";
+  elements.authUser.textContent = "Signed out";
+  elements.loginError.textContent = message;
+  elements.loginError.hidden = !message;
+}
+
+function showApp(username) {
+  elements.authPanel.hidden = true;
+  elements.appMain.hidden = false;
+  elements.refreshButton.hidden = false;
+  elements.authButton.textContent = "Sign out";
+  elements.authUser.textContent = `Signed in as ${username}`;
+  elements.authSummary.textContent = `Authenticated as ${username}`;
+}
+
+async function responseError(response) {
+  let message = response.status === 401 ? "Your PolyLife session has expired." : "Something went wrong.";
+  try {
+    const payload = await response.json();
+    message = payload.detail || payload.message || payload.error?.message || message;
+  } catch (_) {
+    // Keep the status-based fallback for non-JSON responses.
+  }
+  return message;
+}
+
+async function refreshAccessToken() {
+  if (state.refreshing) return state.refreshing;
+  const refresh = localStorage.getItem(REFRESH_KEY);
+  if (!refresh) return false;
+
+  state.refreshing = fetch(`${authApi}/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ refresh }),
+  }).then(async (response) => {
+    if (!response.ok) return false;
+    const payload = await response.json();
+    if (!payload.token) return false;
+    localStorage.setItem(ACCESS_KEY, payload.token);
+    return true;
+  }).catch(() => false).finally(() => {
+    state.refreshing = null;
+  });
+
+  return state.refreshing;
+}
+
+async function request(path, options = {}, retried = false) {
+  const token = accessToken();
   const response = await fetch(`${api}${path}`, {
     credentials: "same-origin",
     ...options,
-    headers: { Accept: "application/json", ...(options.headers || {}) },
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
   });
+
+  if (response.status === 401 && !retried && await refreshAccessToken()) {
+    return request(path, options, true);
+  }
+
   if (!response.ok) {
-    let message = "Something went wrong.";
-    try {
-      const payload = await response.json();
-      message = payload.detail || payload.error?.message || message;
-    } catch (_) {
-      message = response.status === 401 ? "Please sign in through PolyLife first." : message;
+    const message = await responseError(response);
+    if (response.status === 401) {
+      clearAuth();
+      showLogin(message);
     }
     throw new Error(message);
   }
   return response.status === 204 ? null : response.json();
+}
+
+async function login(event) {
+  event.preventDefault();
+  elements.loginButton.disabled = true;
+  elements.loginError.hidden = true;
+
+  try {
+    const response = await fetch(`${authApi}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        username: elements.loginUsername.value.trim(),
+        password: elements.loginPassword.value,
+      }),
+    });
+    if (!response.ok) throw new Error(await responseError(response));
+
+    const payload = await response.json();
+    if (!payload.token || !payload.refresh || !payload.user?.username) {
+      throw new Error("Core returned an incomplete login response.");
+    }
+    localStorage.setItem(ACCESS_KEY, payload.token);
+    localStorage.setItem(REFRESH_KEY, payload.refresh);
+    localStorage.setItem(USER_KEY, payload.user.username);
+    elements.loginForm.reset();
+    showApp(payload.user.username);
+  } catch (error) {
+    clearAuth();
+    showLogin(error.message);
+    return;
+  } finally {
+    elements.loginButton.disabled = false;
+  }
+
+  await loadCoaches();
+}
+
+async function logout() {
+  const token = accessToken();
+  try {
+    if (token) {
+      await fetch(`${authApi}/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      });
+    }
+  } finally {
+    clearAuth();
+    state.coaches = [];
+    state.selectedCoach = null;
+    state.threadId = null;
+    showLogin();
+  }
 }
 
 function showToast(message, isError = false) {
@@ -168,7 +307,18 @@ async function loadAppointments() {
   `).join("");
 }
 
-document.querySelector("#refresh-button").addEventListener("click", () => loadCoaches().catch((error) => showToast(error.message, true)));
+elements.refreshButton.addEventListener("click", () => loadCoaches().catch((error) => showToast(error.message, true)));
+elements.authButton.addEventListener("click", () => {
+  if (accessToken()) {
+    logout().catch((error) => showToast(error.message, true));
+  } else {
+    showLogin();
+    elements.loginUsername.focus();
+  }
+});
+elements.loginForm.addEventListener("submit", (event) => {
+  login(event).catch((error) => showToast(error.message, true));
+});
 document.querySelector("#reload-slots-button").addEventListener("click", () => loadSlots().catch((error) => showToast(error.message, true)));
 document.querySelector("#start-chat-button").addEventListener("click", () => openConversation().catch((error) => showToast(error.message, true)));
 document.querySelector("#appointments-button").addEventListener("click", () => loadAppointments().catch((error) => showToast(error.message, true)));
@@ -185,4 +335,13 @@ elements.attachmentForm.addEventListener("submit", (event) => {
   uploadAttachment(event).catch((error) => showToast(error.message, true));
 });
 
-loadCoaches().catch((error) => showToast(error.message, true));
+const username = localStorage.getItem(USER_KEY);
+if (accessToken() && username) {
+  showApp(username);
+  loadCoaches().catch((error) => {
+    if (!elements.appMain.hidden) showToast(error.message, true);
+  });
+} else {
+  clearAuth();
+  showLogin();
+}

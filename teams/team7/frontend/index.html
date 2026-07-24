@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="./styles.css?v=20260724-auth">
   </head>
   <body>
     <div class="page-shell">
@@ -17,17 +17,42 @@
           <span class="brand-mark">P</span>
           <span>PolyLife <b>Coach Space</b></span>
         </a>
-        <button id="refresh-button" class="button button-quiet" type="button">Refresh</button>
+        <div class="header-actions">
+          <span id="auth-user" class="auth-user">Signed out</span>
+          <button id="auth-button" class="button button-quiet" type="button">Sign in</button>
+          <button id="refresh-button" class="button button-quiet" type="button" hidden>Refresh</button>
+        </div>
       </header>
 
-      <main>
+      <section id="auth-panel" class="auth-panel" aria-labelledby="auth-heading">
+        <div class="auth-copy">
+          <p class="eyebrow">PolyLife account</p>
+          <h1 id="auth-heading">Your coach space,<br><em>kept private.</em></h1>
+          <p>Sign in with your PolyLife account to browse coaches, reserve a session, and open your conversations.</p>
+        </div>
+        <form id="login-form" class="login-form">
+          <label>
+            <span>Username</span>
+            <input id="login-username" name="username" type="text" autocomplete="username" required>
+          </label>
+          <label>
+            <span>Password</span>
+            <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+          </label>
+          <p id="login-error" class="login-error" role="alert" hidden></p>
+          <button id="login-button" class="button button-dark" type="submit">Enter Coach Space</button>
+          <small>Development users: user1, user2, or user3.</small>
+        </form>
+      </section>
+
+      <main id="app-main" hidden>
         <section class="hero">
           <p class="eyebrow">A calmer way to grow</p>
           <h1>Find the right coach.<br><em>Make time for yourself.</em></h1>
           <p class="hero-copy">Browse available coaches, reserve an open session, and start a private conversation from one place.</p>
           <div class="hero-meta">
             <span id="online-count" class="availability-pill">Checking availability...</span>
-            <span>Authenticated through PolyLife</span>
+            <span id="auth-summary">Authenticated through PolyLife</span>
           </div>
         </section>
 
@@ -115,6 +140,6 @@
     </div>
 
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-    <script src="./app.js" defer></script>
+    <script src="./app.js?v=20260724-auth" defer></script>
   </body>
 </html>
