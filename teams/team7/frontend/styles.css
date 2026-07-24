@@ -19,12 +19,21 @@ body {
   font-family: "Abril Fatface", Georgia, serif;
   font-variant-numeric: lining-nums tabular-nums;
 }
-button, input { font: inherit; }
+html[lang="fa"] body {
+  font-family: "Vazirmatn", Tahoma, sans-serif;
+}
+em {
+  font-style: normal;
+}
+button, input, textarea { font: inherit; }
 button { cursor: pointer; }
+button:disabled { cursor: wait; opacity: .65; transform: none; }
 .page-shell { min-height: 100vh; background: radial-gradient(circle at 80% 5%, var(--cream) 0, transparent 28rem), linear-gradient(140deg, var(--paper) 0%, #cdf1f4 100%); }
 .site-header, main { width: min(1160px, calc(100% - 40px)); margin: auto; }
 .site-header { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; }
 .header-actions { display: flex; align-items: center; gap: 9px; }
+.button-language { display: inline-flex; min-width: 108px; align-items: center; justify-content: center; gap: 7px; border-color: var(--leaf); background: var(--leaf-pale); color: var(--ink); direction: ltr; }
+.language-divider { opacity: .55; }
 .auth-user { color: var(--muted); font-size: .78rem; }
 .brand { color: var(--ink); display: flex; align-items: center; gap: 10px; text-decoration: none; font-size: 1.08rem; letter-spacing: -0.03em; }
 .brand b { color: var(--leaf); font-weight: normal; }
@@ -85,25 +94,80 @@ h3 { margin-bottom: 0; font-size: 1.25rem; font-weight: normal; }
 .slot-card .button { padding: 7px 12px; font-size: .82rem; }
 .chat-section { border-radius: 15px; background: var(--leaf-pale); padding: 20px; }
 .thread-id { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; }
+.message-list { display: grid; max-height: 330px; gap: 10px; margin: 18px 0 12px; overflow-y: auto; scroll-behavior: smooth; }
+.message-bubble { width: min(84%, 470px); border: 1px solid var(--line); border-radius: 15px 15px 15px 4px; background: var(--paper); padding: 11px 13px; }
+.message-bubble.message-own { margin-inline-start: auto; border-color: var(--ink); border-radius: 15px 15px 4px 15px; background: var(--cream); }
+.message-meta { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; color: var(--muted); font-size: .69rem; }
+.message-meta strong { font-weight: normal; }
+.message-bubble p { margin: 0; color: #000; font-family: "Vazirmatn", Tahoma, sans-serif; font-size: .88rem; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.message-form { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10px; }
+.message-form textarea,
+.reservation-note textarea { width: 100%; resize: vertical; border: 1px solid var(--ink); border-radius: 12px; outline: 0; background: var(--paper); color: #000; padding: 11px 13px; line-height: 1.55; }
+.message-form textarea:focus,
+.reservation-note textarea:focus { box-shadow: 0 0 0 3px #cdf1f4; }
+.attachment-divider { display: flex; align-items: center; gap: 10px; margin: 18px 0 12px; color: var(--muted); font-size: .75rem; }
+.attachment-divider::before,
+.attachment-divider::after { height: 1px; flex: 1; background: rgba(24, 94, 100, .28); content: ""; }
 .attachment-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .file-label { color: var(--ink); font-size: .85rem; }
-.attachment-form input { max-width: 210px; font-size: .8rem; }
+.attachment-filename { max-width: 220px; overflow: hidden; color: var(--muted); font-size: .8rem; text-overflow: ellipsis; white-space: nowrap; }
 .appointments-section { margin: 28px 0 56px; border: 1px solid var(--line); border-radius: 20px; background: var(--paper); }
 .appointment-card { background: var(--cream); }
 .empty-list { margin: 0; color: var(--muted); }
 .toast { position: fixed; right: 22px; bottom: 22px; max-width: 360px; border-radius: 12px; background: var(--ink); color: white; box-shadow: var(--shadow); padding: 14px 18px; }
 .toast.error { background: #000; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.reservation-dialog { width: min(520px, calc(100% - 32px)); border: 1px solid var(--line); border-radius: 22px; background: var(--paper); color: var(--ink); box-shadow: var(--shadow); padding: 0; }
+.reservation-dialog::backdrop { background: rgba(0, 0, 0, .48); backdrop-filter: blur(3px); }
+.reservation-form { display: grid; gap: 22px; padding: 28px; }
+.reservation-summary { display: grid; gap: 5px; border-radius: 14px; background: var(--leaf-pale); padding: 17px; }
+.reservation-summary strong { font-size: 1.08rem; font-weight: normal; }
+.reservation-summary time { color: var(--muted); font-size: .86rem; line-height: 1.55; }
+.reservation-note { display: grid; gap: 8px; color: var(--muted); font-size: .82rem; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+html[lang="fa"] h1,
+html[lang="fa"] h2,
+html[lang="fa"] h3 {
+  letter-spacing: normal;
+  line-height: 1.35;
+}
+html[lang="fa"] .auth-copy h1 {
+  max-width: 620px;
+  font-size: clamp(2.1rem, 4vw, 3.7rem);
+  line-height: 1.5;
+}
+html[lang="fa"] .eyebrow {
+  font-family: "Vazirmatn", Tahoma, sans-serif;
+  letter-spacing: .04em;
+  text-transform: none;
+}
+html[dir="rtl"] .brand { direction: ltr; }
+html[dir="rtl"] .coach-panel { border-right: 0; border-left: 1px solid var(--line); }
+html[dir="rtl"] .coach-card { text-align: right; }
+html[dir="rtl"] .coach-card:hover,
+html[dir="rtl"] .coach-card[aria-current="true"] { transform: translateX(-3px); }
+html[dir="rtl"] #login-username,
+html[dir="rtl"] #login-password { direction: ltr; text-align: left; }
+html[dir="rtl"] .message-meta time,
+html[dir="rtl"] .reservation-summary time { direction: rtl; }
+html[dir="rtl"] .toast { right: auto; left: 22px; }
 
 @media (max-width: 760px) {
   .site-header, main { width: min(100% - 28px, 1160px); }
   .site-header { align-items: flex-start; gap: 18px; }
   .header-actions { flex-wrap: wrap; justify-content: flex-end; }
-  .auth-user { width: 100%; text-align: right; }
+  .auth-user { width: 100%; text-align: end; }
   .auth-panel { grid-template-columns: 1fr; gap: 24px; width: min(100% - 28px, 1040px); margin: 32px auto; padding: 26px; }
   .hero { padding: 45px 0; }
   .workspace { grid-template-columns: 1fr; }
   .coach-panel { border-right: 0; border-bottom: 1px solid var(--line); }
+  html[dir="rtl"] .coach-panel { border-left: 0; }
   .coach-panel, .detail-panel, .appointments-section { padding: 22px; }
   .profile-facts { grid-template-columns: 1fr; }
+  .message-form { grid-template-columns: 1fr; }
+  .message-form .button { justify-self: end; }
+  .message-bubble { width: 92%; }
+  .dialog-actions { flex-direction: column-reverse; }
+  .dialog-actions .button { width: 100%; }
 }
