@@ -245,26 +245,17 @@ def product_share_link(request, pk):
     )
 
 def check_admin_page(request):
-    # username = request.headers.get("X-User-Username", "")
-    # return username == "admin"
-    return True
-
+    username = request.headers.get("X-User-Username", "")
+    return username == "admin"
 
 
 def admin_dashboard(request):
-
     if not check_admin_page(request):
-        return HttpResponseForbidden(
-            "Access denied"
-        )
-
+        return HttpResponseForbidden("Access denied")   
     return render(
         request,
         "store/admin/dashboard.html"
     )
-
-
-
 def admin_products_page(request):
 
     if not check_admin_page(request):
