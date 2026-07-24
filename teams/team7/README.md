@@ -319,6 +319,19 @@ end-to-end route, also run the relevant integrated checks in
 Report each command as PASS, FAIL, or SKIPPED with a reason. A passing unit test
 does not prove that gateway authentication or container networking works.
 
+### Final smoke test
+
+After Core is running and you have a valid Core access token, run the complete
+Team 7 verification from the repository root:
+
+```bash
+TEAM7_TOKEN='paste-core-token-here' ./teams/team7/smoke-test.sh
+```
+
+The script verifies that Docker and the shared Core network are available,
+builds and starts the Team 7 stack, runs the backend pytest suite, checks the
+static frontend, and makes an authenticated request through the gateway.
+
 ## Contribution workflow
 
 Before changing Team 7 code:
