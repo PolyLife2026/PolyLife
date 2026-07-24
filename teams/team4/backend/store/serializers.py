@@ -85,14 +85,60 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             validated_data["slug"] = slug
 
         return super().create(validated_data)
+    
+    def update(self, instance, validated_data):
 
+        validated_data.pop("slug", None)
+
+        return super().update(
+            instance,
+            validated_data
+        )
 
 class ProductWriteSerializer(serializers.ModelSerializer):
     """برای مدیر - ویرایش محصول (FR5)"""
+
     class Meta:
         model = Product
         fields = [
-            "name", "slug", "description", "price",
-            "stock_quantity", "category", "brand",
-            "sport_type", "image_url", "supplement_id", "is_active",
+            "name",
+            "slug",
+            "description",
+            "price",
+            "stock_quantity",
+            "category",
+            "brand",
+            "sport_type",
+            "image_url",
+            "supplement_id",
+            "is_active",
         ]
+
+        extra_kwargs = {
+            "slug": {
+                "required": False,
+                "allow_blank": True,
+            }
+        }
+
+
+    def create(self, validated_data):
+        from django.utils.text import slugify
+
+        if not validated_data.get("slug"):
+            validated_data["slug"] = slugify(
+                validated_data["name"]
+            )
+
+        return super().create(validated_data)
+
+
+    def update(self, instance, validated_data):
+
+        # never require or overwrite slug during edit
+        validated_data.pop("slug", None)
+
+        return super().update(
+            instance,
+            validated_data
+        )
