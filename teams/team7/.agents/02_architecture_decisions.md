@@ -236,4 +236,50 @@ A green tick here is **mandatory** for acceptance.
 | Do we use Redis Streams or RabbitMQ for events? | Sina S. | Before Sprint 1 review |
 | How do we surface coach availability across both services? | Amirali | Before Sprint 2 |
 
-> Add new questions here when they come up; resolve them in writing, not in DMs.
+### 8.1 Resolved — Redis pub/sub for chat fan-out (SCRUM-11)
+
+**Decision (Sina S., 2026-07-24):** Use **Redis Pub/Sub** for the
+SCRUM-11 chat WebSocket fan-out. Rationale:
+
+* Redis is already a first-class service in
+  `teams/team7/docker-compose.yml` (added in SCRUM-5) on the private
+  `team` network, and the `URL_REDIS` env var is wired in
+  `.env.example`.
+* The fan-out contract is **at-most-once** ("a message is fanned out
+  to currently-connected WebSockets; subscribers that reconnect after
+  a disconnect do not receive replays"). That matches Pub/Sub's
+  semantics exactly; Redis Streams / consumer groups would add
+  persistence we do not yet need.
+* RabbitMQ would require a new service, a new port, and new
+  credentials — out of scope for the P3 deadline.
+* Offline delivery (open question #1) is a separate concern: the
+  REST history endpoint (`GET /chat/threads/{id}/messages`) already
+  covers backfill on reconnect.
+
+Channel naming (defined in `app/services/chat_pubsub.py`):
+
+```text
+team7:chat:thread:{thread_id}   — per-thread event stream
+team7:chat:presence            — global coach presence stream
+```
+
+Event envelope (JSON):
+
+```json
+{ "event": "message.created", "data": { ... } }
+{ "event": "message.read",    "data": { ... } }
+{ "event": "typing.start",    "data": { ... } }
+{ "event": "typing.stop",     "data": { ... } }
+{ "event": "presence.update", "data": { ... } }
+```
+
+The backend **never** decodes JWTs; the Nginx gateway already
+forwards `X-User-Id` / `X-User-Username` on the WebSocket Upgrade
+request, and the FastAPI handler reads them before `accept()`. The
+shared Redis client is initialised in the FastAPI lifespan and shared
+across all WebSocket handlers (one `PubSub` per connection); the
+Pydantic schemas in `app/schemas/chat_ws.py` mirror the wire contract
+documented in `.agents/04_api_endpoints.md` §1.2.
+
+> Add new questions here when they come up; resolve them in writing, not
+> in DMs.

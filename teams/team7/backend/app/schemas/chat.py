@@ -67,3 +67,24 @@ class ChatAttachmentResponse(BaseModel):
     """Envelope for ``POST /api/chat/threads/{thread_id}/attachments``."""
 
     data: ChatAttachmentRead
+
+
+class ChatMessageRead(BaseModel):
+    """Public shape of a single chat message."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    thread_id: int
+    sender_user_id: int
+    body: str
+    sent_at: datetime
+    read_at: datetime | None
+    created_at: datetime
+    updated_at: datetime | None
+
+
+class ChatMessageResponse(BaseModel):
+    """Envelope for single-message responses (e.g. mark-as-read)."""
+
+    data: ChatMessageRead

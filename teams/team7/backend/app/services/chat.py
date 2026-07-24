@@ -78,6 +78,7 @@ async def update_current_coach_status(
             detail="No coach profile found for the current user.",
         )
 
+    previous = profile.is_online
     profile.is_online = payload.is_online
     profile.updated_at = _utcnow()
     await session.commit()
@@ -88,6 +89,25 @@ async def update_current_coach_status(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load coach profile after status update.",
         )
+
+    # Best-effort presence fan-out. The endpoint stays successful even if
+    # Redis is temporarily unavailable — the WebSocket layer will
+    # reconcile on the next status toggle.
+    if previous != payload.is_online:
+        try:
+            from app.core.redis import get_redis_client
+            from app.services.chat_pubsub import PRESENCE_CHANNEL, publish_event
+
+            redis_client = get_redis_client()
+            await publish_event(
+                redis_client,
+                channel=PRESENCE_CHANNEL,
+                event="presence.update",
+                data={"coach_user_id": coach_user_id, "is_online": payload.is_online},
+            )
+        except Exception:
+            # Presence is non-critical; don't fail the REST call.
+            pass
     return row
 
 
