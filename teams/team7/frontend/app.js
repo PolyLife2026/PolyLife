@@ -67,6 +67,7 @@ const translations = {
     loadAppointments: "Load appointments",
     sessionExpired: "Your PolyLife session has expired.",
     genericError: "Something went wrong.",
+    loginFailed: "Sign-in failed",
     incompleteLogin: "Core returned an incomplete login response.",
     noCoachMatch: "No coaches match this specialty.",
     coachLoadError: "Coach information could not be loaded.",
@@ -164,6 +165,7 @@ const translations = {
     loadAppointments: "نمایش جلسه‌ها",
     sessionExpired: "نشست پلی‌لایف شما منقضی شده است.",
     genericError: "مشکلی پیش آمد.",
+    loginFailed: "ورود ناموفق بود",
     incompleteLogin: "پاسخ ورود دریافت‌شده از Core کامل نیست.",
     noCoachMatch: "مربی‌ای با این تخصص پیدا نشد.",
     coachLoadError: "اطلاعات مربی‌ها دریافت نشد.",
@@ -236,6 +238,7 @@ const elements = {
   loginUsername: document.querySelector("#login-username"),
   loginPassword: document.querySelector("#login-password"),
   loginError: document.querySelector("#login-error"),
+  loginErrorMessage: document.querySelector("#login-error-message"),
   coachList: document.querySelector("#coach-list"),
   specialtyFilter: document.querySelector("#specialty-filter"),
   onlineCount: document.querySelector("#online-count"),
@@ -346,7 +349,7 @@ function showLogin(message = "") {
   elements.refreshButton.hidden = true;
   elements.authButton.textContent = t("signIn");
   elements.authUser.textContent = t("signedOut");
-  elements.loginError.textContent = message;
+  elements.loginErrorMessage.textContent = message;
   elements.loginError.hidden = !message;
 }
 

@@ -44,7 +44,13 @@
             <span data-i18n="password">Password</span>
             <input id="login-password" name="password" type="password" autocomplete="current-password" required>
           </label>
-          <p id="login-error" class="login-error" role="alert" hidden></p>
+          <div id="login-error" class="login-error" role="alert" aria-live="assertive" hidden>
+            <span class="login-error-icon" aria-hidden="true">!</span>
+            <div>
+              <strong data-i18n="loginFailed">Sign-in failed</strong>
+              <p id="login-error-message"></p>
+            </div>
+          </div>
           <button id="login-button" class="button button-dark" type="submit" data-i18n="enterCoachSpace">Enter Coach Booking Space</button>
           <small data-i18n="developmentUsers">Development users: user1, user2, or user3.</small>
         </form>
