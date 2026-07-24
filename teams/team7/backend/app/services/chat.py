@@ -1,4 +1,4 @@
-"""Chat service layer (SCRUM-8).
+"""Chat service layer (SCRUM-8, SCRUM-14).
 
 Pure database functions for the chat with-coach service. The HTTP layer
 in ``app.api.chat`` depends on these so router tests can stay focused on
@@ -28,8 +28,11 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.base import _utcnow
 from app.models.chat_thread import ChatThread
 from app.models.coach_profile import CoachProfile
+from app.schemas.chat import CoachOnlineStatusUpdateRequest
+from app.services import reserve as reserve_service
 
 
 async def coach_profile_exists(session: AsyncSession, coach_user_id: int) -> bool:
@@ -41,6 +44,46 @@ async def coach_profile_exists(session: AsyncSession, coach_user_id: int) -> boo
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none() is not None
+
+
+async def list_online_coaches(session: AsyncSession) -> list[dict]:
+    """Return active coach profiles currently marked online."""
+
+    rows = await reserve_service.list_coach_profiles(session)
+    return [row for row in rows if row["is_online"]]
+
+
+async def update_current_coach_status(
+    session: AsyncSession,
+    *,
+    coach_user_id: int,
+    payload: CoachOnlineStatusUpdateRequest,
+) -> dict:
+    """Toggle the caller's ``is_online`` flag and return the public profile."""
+
+    stmt = select(CoachProfile).where(
+        CoachProfile.user_id == coach_user_id,
+        CoachProfile.is_deleted.is_(False),
+    )
+    result = await session.execute(stmt)
+    profile = result.scalar_one_or_none()
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No coach profile found for the current user.",
+        )
+
+    profile.is_online = payload.is_online
+    profile.updated_at = _utcnow()
+    await session.commit()
+
+    row = await reserve_service.get_coach_profile(session, coach_user_id)
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load coach profile after status update.",
+        )
+    return row
 
 
 async def list_threads_for_user(
@@ -122,7 +165,6 @@ async def _fetch_active_thread(
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
-
 
 async def _fetch_soft_deleted_thread(
     session: AsyncSession, user_id: int, coach_user_id: int
