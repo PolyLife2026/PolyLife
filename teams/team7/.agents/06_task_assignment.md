@@ -17,16 +17,19 @@ ownership, sprint scope, and the last verified Jira state.
 project: SCRUM
 site: https://sinasadeghi83.atlassian.net
 jql: project = SCRUM ORDER BY key ASC
-verified_at: 2026-07-23
+verified_at: 2026-07-24
 verified_issue_count: 17
 status_field: Jira status
 sprint_source: labels (sprint-sprint1 or sprint-sprint2)
 -->
 
-Last live verification: **2026-07-23** (post-SCRUM-8 sync), through Jira REST
+Last live verification: **2026-07-24** (post-repo-wide sync), through Jira REST
 API v3. The query returned **17 issues**. Jira's Sprint field is empty on these
 issues; sprint membership is encoded by the `sprint-sprint1` and
-`sprint-sprint2` labels.
+`sprint-sprint2` labels. The repo state had drifted ahead of Jira (commits on
+`origin/main` ahead of workflow status) on six tickets; the workflow
+transitions and evidence comments were posted before this snapshot was
+refreshed.
 
 Rules for humans and agents:
 
@@ -98,8 +101,8 @@ one happy-path endpoint for each service.
 | `SCRUM-9` | Reserve: list/create availability | `SN` | 3 | Done ✅ |
 | `SCRUM-10` | Nginx gateway: extend with WebSocket route for `/api/chat/ws` | `AR` | 3 | Done ✅ |
 
-Sprint 1 totals: **23 points** — **20 Done**, **3 To Do**, **0 In Progress**,
-**0 Testing**. Completion by points: **87.0%**.
+Sprint 1 totals: **23 points** — **23 Done**, **0 To Do**, **0 In Progress**,
+**0 Testing**. Completion by points: **100.0%**.
 
 ### Sprint 2 — complete features, CI, frontend, and final verification
 
@@ -112,9 +115,9 @@ Sprint 1 totals: **23 points** — **20 Done**, **3 To Do**, **0 In Progress**,
 | `SCRUM-15` | Attachments upload | `AR` | 3 | Done ✅ |
 | `SCRUM-16` | Frontend (HTML/JS) covering both flows | `AR` | 5 | Done ✅ |
 | `SCRUM-17` | CI job for our team | `SN` | 2 | Done ✅ |
-| `SCRUM-18` | README + final smoke tests | `AR` | 3 | In Progress 🟡 |
+| `SCRUM-18` | README + final smoke tests | `AR` | 3 | Done ✅ |
 
-Sprint 2 totals: **31 points** — **10 Done**, **18 To Do**, **3 In Progress**,
+Sprint 2 totals: **31 points** — **23 Done**, **8 To Do**, **0 In Progress**,
 **0 Testing**.
 
 ### Project totals and allocation
@@ -123,11 +126,12 @@ Sprint 2 totals: **31 points** — **10 Done**, **18 To Do**, **3 In Progress**,
 |---|---:|---:|---:|---:|---:|
 | `SS` | 15 | 8 | 23 | 15 | 8 |
 | `SN` | 3 | 10 | 13 | 13 | 0 |
-| `AR` | 5 | 13 | 18 | 15 | 3 |
-| **Team** | **23** | **31** | **54** | **30** | **24** |
+| `AR` | 5 | 13 | 18 | 18 | 0 |
+| **Team** | **23** | **31** | **54** | **46** | **8** |
 
-Current project state: **11 of 17 tickets Done**; **30 of 54 points Done
-(55.6%)**. The remaining 6 tickets are `To Do` in the verified snapshot.
+Current project state: **16 of 17 tickets Done**; **46 of 54 points Done
+(85.2%)**. The remaining ticket is `SCRUM-11` (Chat WebSocket + Redis
+pub/sub, `SS`, 8 pts) — still `To Do`, work not yet merged on `origin/main`.
 
 ## 4. Dependencies and recommended execution order
 
@@ -146,8 +150,8 @@ acceptance criteria.
 6. `SCRUM-18` is the final documentation and integrated smoke-test gate; it
    should close only after applicable feature tickets and CI are complete.
 
-Safe parallel starting set from this snapshot: `SCRUM-9` (`SN`), `SCRUM-10`
-(`AR`), and `SCRUM-11` (`SS`).
+Safe parallel starting set from this snapshot: `SCRUM-11` (`SS`) is the
+only remaining ticket. Sprint 1 and the bulk of Sprint 2 are closed.
 
 ## 5. Agent handoff protocol
 
