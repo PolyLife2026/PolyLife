@@ -1,0 +1,179 @@
+{% extends "store/base.html" %}
+{% block title %}پرداخت — PolyLife{% endblock %}
+
+{% block extra_css %}
+.checkout-box {
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+.section-card { background: #fff; border-radius: 12px; border: 1px solid var(--gray); padding: 1.2rem; }
+.section-card h3 { color: var(--primary); margin-bottom: .9rem; font-size: 1rem; }
+.order-item-row { display: flex; justify-content: space-between; padding: .4rem 0; border-bottom: 1px solid #f0f0f0; font-size: .88rem; }
+.price-summary .row { display: flex; justify-content: space-between; margin-bottom: .4rem; font-size: .9rem; }
+.price-summary .final { font-weight: 800; font-size: 1.1rem; border-top: 2px solid var(--gray); padding-top: .6rem; margin-top: .4rem; }
+.pay-btn { font-size: 1rem; padding: .9rem; }
+
+/* Result screen */
+.result-box {
+  max-width: 520px;
+  margin: 2rem auto;
+  text-align: center;
+  padding: 2.5rem;
+}
+.result-icon { font-size: 4.5rem; margin-bottom: 1rem; }
+.result-box h2 { font-size: 1.5rem; margin-bottom: .7rem; }
+.invoice-table { width: 100%; border-collapse: collapse; margin: 1rem 0; text-align: right; font-size: .88rem; }
+.invoice-table td { padding: .45rem .6rem; border-bottom: 1px solid #f0f0f0; }
+.invoice-table td:first-child { color: #666; }
+{% endblock %}
+
+{% block content %}
+<div id="checkout-view"><div class="spinner"></div></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const urlParams  = new URLSearchParams(window.location.search);
+const couponCode = urlParams.get('coupon') || '';
+let   cartData   = null;
+document.addEventListener("DOMContentLoaded", () => {
+    if (!requireLogin()) return;
+
+    loadCart();
+});
+// ─── Load cart summary ────────────────────────────────────────────
+async function init() {
+  const el = document.getElementById('checkout-view');
+  try {
+    const r = await authFetch('/api/cart/');
+    if (!r.ok) { el.innerHTML = '<p class="alert alert-error">لطفاً ابتدا وارد شوید</p>'; return; }
+    cartData = await r.json();
+    if (!cartData.items || !cartData.items.length) {
+      el.innerHTML = `<div class="alert alert-info" style="text-align:center;padding:2rem">
+        سبد خرید خالی است. <a href="/store/products/" class="btn btn-primary" style="margin-top:.8rem;display:inline-block">ادامه خرید</a>
+      </div>`;
+      return;
+    }
+    renderCheckout();
+  } catch { el.innerHTML = '<p class="alert alert-error">خطای شبکه</p>'; }
+}
+
+function renderCheckout() {
+  const total = Number(cartData.total);
+  let discount = 0;
+  if (couponCode) {
+    // We assume discount was already validated on cart page
+    // Just show coupon code in form
+  }
+  const rows = cartData.items.map(i =>
+    `<div class="order-item-row">
+       <span>${i.name} × ${i.quantity}</span>
+       <span>${price(i.subtotal)}</span>
+     </div>`).join('');
+
+  document.getElementById('checkout-view').innerHTML = `
+    <h2 class="page-title">💳 پرداخت</h2>
+    <div class="checkout-box">
+      <div class="section-card">
+        <h3>📋 خلاصه سفارش</h3>
+        ${rows}
+        <div class="price-summary" style="margin-top:.8rem">
+          <div class="row"><span>جمع:</span><span>${price(total)}</span></div>
+          <div class="row final"><span>مبلغ قابل پرداخت:</span><span id="final-amount">${price(total)}</span></div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <h3>🎟️ کد تخفیف</h3>
+        <div style="display:flex;gap:.5rem">
+          <input id="coupon-f" type="text" value="${couponCode}" placeholder="کد تخفیف..."
+            style="flex:1;padding:.5rem .7rem;border:1px solid var(--gray);border-radius:6px;font-family:'Vazirmatn',sans-serif">
+          <button class="btn btn-outline btn-sm" onclick="verifyCoupon()">اعتبارسنجی</button>
+        </div>
+        <div id="coupon-msg" style="margin-top:.4rem;font-size:.85rem"></div>
+      </div>
+
+      <div class="section-card">
+        <h3>🏦 پرداخت</h3>
+        <p class="text-muted" style="margin-bottom:1rem">پرداخت از طریق درگاه امن (Mock Payment Gateway)</p>
+        <button class="btn btn-primary btn-full pay-btn" id="pay-btn" onclick="doPay()">
+          💳 پرداخت و تأیید سفارش
+        </button>
+      </div>
+    </div>`;
+}
+
+let appliedCoupon = couponCode || '';
+
+async function verifyCoupon() {
+  const code = document.getElementById('coupon-f').value.trim().toUpperCase();
+  const msg  = document.getElementById('coupon-msg');
+  if (!code) return;
+  try {
+    const r = await authFetch('/api/cart/apply-coupon/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    const d = await r.json();
+    if (r.ok) {
+      appliedCoupon = code;
+      msg.innerHTML = `<span style="color:#27ae60">✅ ${d.discount_percent}٪ تخفیف — نهایی: ${price(d.final_total)}</span>`;
+      document.getElementById('final-amount').textContent = price(d.final_total);
+    } else {
+      msg.innerHTML = `<span style="color:#e74c3c">❌ ${d.error}</span>`;
+    }
+  } catch { msg.textContent = 'خطای شبکه'; }
+}
+
+async function doPay() {
+  const btn = document.getElementById('pay-btn');
+  btn.disabled = true; btn.textContent = '⌛ در حال پردازش...';
+  try {
+    const body = {};
+    if (appliedCoupon) body.discount_code = appliedCoupon;
+    const r = await authFetch('/api/cart/checkout/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (r.ok) {
+      showResult(true, d);
+    } else {
+      showResult(false, d);
+    }
+  } catch { showResult(false, { error: 'خطای شبکه' }); }
+}
+
+function showResult(ok, d) {
+  document.getElementById('checkout-view').innerHTML = `
+    <div class="result-box card">
+      <div class="result-icon">${ok ? '🎉' : '❌'}</div>
+      <h2>${ok ? 'پرداخت موفق!' : 'پرداخت ناموفق'}</h2>
+      <p class="text-muted" style="margin-bottom:1rem">${ok ? 'سفارش شما با موفقیت ثبت شد.' : (d.error || 'خطایی رخ داده، دوباره تلاش کنید.')}</p>
+      ${ok ? `
+      <table class="invoice-table">
+        <tr><td>شماره فاکتور</td><td><strong>${d.invoice_number}</strong></td></tr>
+        <tr><td>کد رهگیری</td><td>${d.transaction_ref}</td></tr>
+        <tr><td>مبلغ پرداختی</td><td><strong>${price(d.total_paid)}</strong></td></tr>
+        <tr><td>وضعیت</td><td>✅ پرداخت شده</td></tr>
+      </table>
+      <div style="display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap">
+        <a href="/orders/" class="btn btn-primary">مشاهده سفارشات</a>
+        <a href="/"        class="btn btn-outline">بازگشت به فروشگاه</a>
+      </div>` : `
+      <div style="display:flex;gap:.7rem;justify-content:center">
+        <button class="btn btn-primary" onclick="location.reload()">تلاش مجدد</button>
+        <a href="/cart/" class="btn btn-outline">بازگشت به سبد</a>
+      </div>`}
+    </div>`;
+  if (ok) updateCartBadge();
+}
+
+init();
+</script>
+{% endblock %}
