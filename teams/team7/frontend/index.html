@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#185e64">
+    <title>PolyLife | Coach Booking Space</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./styles.css?v=20260724-cancellation">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand" href="/" aria-label="PolyLife Coach Booking Space" data-i18n-aria-label="brandLabel">
+          <span class="brand-mark">P</span>
+          <span>PolyLife <b data-i18n="brandSpace">Coach Booking Space</b></span>
+        </a>
+        <div class="header-actions">
+          <span id="auth-user" class="auth-user">Signed out</span>
+          <button id="language-button" class="button button-language" type="button" aria-label="Switch language to Persian">
+            <span id="language-label">فارسی</span>
+            <span class="language-divider" aria-hidden="true">/</span>
+            <span id="language-flag" aria-hidden="true">🇮🇷</span>
+          </button>
+          <button id="auth-button" class="button button-quiet" type="button" data-i18n="signIn">Sign in</button>
+          <button id="refresh-button" class="button button-quiet" type="button" data-i18n="refresh" hidden>Refresh</button>
+        </div>
+      </header>
+
+      <section id="auth-panel" class="auth-panel" aria-labelledby="auth-heading">
+        <div class="auth-copy">
+          <p class="eyebrow" data-i18n="accountEyebrow">PolyLife account</p>
+          <h1 id="auth-heading" data-i18n-html="authHeading">Your coach booking space;<br><em>simple, safe, and private.</em></h1>
+          <p data-i18n="authDescription">Sign in with your PolyLife account to browse coaches, reserve a session, and open your conversations.</p>
+        </div>
+        <form id="login-form" class="login-form">
+          <label>
+            <span data-i18n="username">Username</span>
+            <input id="login-username" name="username" type="text" autocomplete="username" required>
+          </label>
+          <label>
+            <span data-i18n="password">Password</span>
+            <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+          </label>
+          <div id="login-error" class="login-error" role="alert" aria-live="assertive" hidden>
+            <span class="login-error-icon" aria-hidden="true">!</span>
+            <div>
+              <strong data-i18n="loginFailed">Sign-in failed</strong>
+              <p id="login-error-message"></p>
+            </div>
+          </div>
+          <button id="login-button" class="button button-dark" type="submit" data-i18n="enterCoachSpace">Enter Coach Booking Space</button>
+          <small data-i18n="developmentUsers">Development users: user1, user2, or user3.</small>
+        </form>
+      </section>
+
+      <main id="app-main" hidden>
+        <section class="hero">
+          <p class="eyebrow" data-i18n="heroEyebrow">A calmer way to grow</p>
+          <h1 data-i18n-html="heroHeading">Find the right coach.<br><em>Make time for yourself.</em></h1>
+          <p class="hero-copy" data-i18n="heroDescription">Browse available coaches, reserve an open session, and start a private conversation from one place.</p>
+          <div class="hero-meta">
+            <span id="online-count" class="availability-pill" data-i18n="checkingAvailability">Checking availability...</span>
+            <span id="auth-summary" data-i18n="authenticatedThrough">Authenticated through PolyLife</span>
+          </div>
+        </section>
+
+        <section class="workspace" aria-label="Coach booking workspace" data-i18n-aria-label="workspaceLabel">
+          <aside class="coach-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="directory">Directory</p>
+                <h2 data-i18n="meetCoaches">Meet the coaches</h2>
+              </div>
+              <label class="search-field">
+                <span class="sr-only" data-i18n="searchSpecialty">Search specialty</span>
+                <input id="specialty-filter" type="search" placeholder="Filter specialty" data-i18n-placeholder="filterSpecialty">
+              </label>
+            </div>
+            <div id="coach-list" class="coach-list" aria-live="polite"></div>
+          </aside>
+
+          <section class="detail-panel">
+            <div id="empty-state" class="empty-state">
+              <span class="empty-orbit">+</span>
+              <h2 data-i18n="selectCoach">Select a coach</h2>
+              <p data-i18n="selectCoachDescription">View their profile, choose an open time, or begin a conversation.</p>
+            </div>
+
+            <div id="coach-detail" hidden>
+              <div class="detail-topline">
+                <p class="eyebrow" data-i18n="coachProfile">Coach profile</p>
+                <span id="detail-online" class="status-dot">Offline</span>
+              </div>
+              <h2 id="detail-name"></h2>
+              <p id="detail-bio" class="detail-bio"></p>
+              <dl class="profile-facts">
+                <div><dt data-i18n="specialties">Specialties</dt><dd id="detail-specialties">-</dd></div>
+                <div><dt data-i18n="experience">Experience</dt><dd id="detail-experience">-</dd></div>
+                <div><dt data-i18n="sessionRate">Session rate</dt><dd id="detail-rate">-</dd></div>
+                <div><dt data-i18n="communityRating">Community rating</dt><dd id="detail-rating">-</dd></div>
+              </dl>
+
+              <div class="actions-row">
+                <button id="start-chat-button" class="button button-dark" type="button" data-i18n="openConversation">Open conversation</button>
+                <button id="reload-slots-button" class="button button-quiet" type="button" data-i18n="reloadTimes">Reload times</button>
+              </div>
+
+              <section class="slots-section" aria-labelledby="slots-heading">
+                <div class="section-heading compact">
+                  <div>
+                    <p class="eyebrow" data-i18n="availability">Availability</p>
+                    <h3 id="slots-heading" data-i18n="reserveTime">Reserve a time</h3>
+                  </div>
+                </div>
+                <div id="slot-list" class="slot-list"></div>
+              </section>
+
+              <section id="chat-section" class="chat-section" hidden aria-labelledby="chat-heading">
+                <div class="section-heading compact">
+                  <div>
+                    <p class="eyebrow" data-i18n="privateSpace">Private space</p>
+                    <h3 id="chat-heading" data-i18n="conversation">Conversation</h3>
+                  </div>
+                  <span id="thread-id" class="thread-id"></span>
+                </div>
+                <p class="chat-note" data-i18n="chatNote">Messages are saved privately in your conversation with this coach.</p>
+                <div id="message-list" class="message-list" aria-live="polite"></div>
+                <form id="message-form" class="message-form">
+                  <label class="sr-only" for="message-input" data-i18n="messageLabel">Message</label>
+                  <textarea id="message-input" name="body" rows="2" maxlength="8000" required placeholder="Write a message..." data-i18n-placeholder="messagePlaceholder"></textarea>
+                  <button id="send-message-button" class="button button-dark" type="submit" data-i18n="sendMessage">Send</button>
+                </form>
+                <div class="attachment-divider">
+                  <span data-i18n="orShareFile">or share a file</span>
+                </div>
+                <form id="attachment-form" class="attachment-form">
+                  <label class="file-label button button-quiet" for="attachment-input" data-i18n="chooseAttachment">Choose an attachment</label>
+                  <input id="attachment-input" class="sr-only" name="file" type="file" required>
+                  <span id="attachment-filename" class="attachment-filename" data-i18n="noFileSelected">No file selected</span>
+                  <button class="button button-dark" type="submit" data-i18n="shareFile">Share file</button>
+                </form>
+              </section>
+            </div>
+          </section>
+        </section>
+
+        <section class="appointments-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow" data-i18n="yourSchedule">Your schedule</p>
+              <h2 data-i18n="upcomingAppointments">Upcoming appointments</h2>
+            </div>
+            <button id="appointments-button" class="button button-quiet" type="button" data-i18n="loadAppointments">Load appointments</button>
+          </div>
+          <div id="appointment-list" class="appointment-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="reservation-dialog" class="reservation-dialog" aria-labelledby="reservation-heading">
+      <form id="reservation-form" class="reservation-form">
+        <div>
+          <p class="eyebrow" data-i18n="confirmReservation">Confirm reservation</p>
+          <h2 id="reservation-heading" data-i18n="reserveSession">Reserve this session?</h2>
+        </div>
+        <div class="reservation-summary">
+          <strong id="reservation-coach"></strong>
+          <time id="reservation-time"></time>
+        </div>
+        <label class="reservation-note">
+          <span data-i18n="optionalNote">Optional note for your coach</span>
+          <textarea id="reservation-notes" rows="3" maxlength="1000" placeholder="Anything your coach should know before the session..." data-i18n-placeholder="notePlaceholder"></textarea>
+        </label>
+        <div class="dialog-actions">
+          <button id="cancel-reservation-button" class="button button-quiet" type="button" data-i18n="cancel">Cancel</button>
+          <button id="confirm-reservation-button" class="button button-dark" type="submit" data-i18n="confirmAndReserve">Confirm reservation</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="cancellation-dialog" class="reservation-dialog" aria-labelledby="cancellation-heading">
+      <form id="cancellation-form" class="reservation-form">
+        <div>
+          <p class="eyebrow eyebrow-danger" data-i18n="cancelAppointment">Cancel appointment</p>
+          <h2 id="cancellation-heading" data-i18n="cancelAppointmentTitle">Cancel this appointment?</h2>
+        </div>
+        <div class="reservation-summary cancellation-summary">
+          <strong id="cancellation-coach"></strong>
+          <span id="cancellation-slot"></span>
+        </div>
+        <p class="cancellation-note" data-i18n="cancelAppointmentDescription">The appointment will be marked as cancelled and cannot be restored from this page.</p>
+        <div class="dialog-actions">
+          <button id="keep-appointment-button" class="button button-quiet" type="button" data-i18n="keepAppointment">Keep appointment</button>
+          <button id="confirm-cancellation-button" class="button button-danger" type="submit" data-i18n="confirmCancellation">Yes, cancel it</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <script src="./app.js?v=20260724-cancellation" defer></script>
+  </body>
+</html>
