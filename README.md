@@ -1,15 +1,31 @@
-# PolyLife — Core
+PolyLife — Core
 
-Software Engineering 1 course project — 1404/1405.
+One application, one complete lifestyle.
 
-This repository is the **core** of PolyLife: a Django project that provides the
-shared infrastructure (authentication, the landing/home page, and the auth
-gateway for the team microservices). Each student team builds its own service —
-with its **own database** and **own gateway** — behind this core.
+Software Engineering 1 Course Project — Semester 1404/1405
+About PolyLife
 
-## Architecture
+PolyLife is not just a fitness application; it is a smart, integrated ecosystem that transforms the journey toward fitness, health, and vitality from a scattered and exhausting challenge into a sustainable lifestyle. Our mission is to empower people to build the best version of themselves by combining workout programs, personalized nutrition plans, and the strength of a supportive social network.
 
-```
+This ecosystem consists of several specialized services (microservices), each carefully designed to address a specific user need while collectively delivering a seamless experience:
+Service 	Description
+PolyWorkout 	The central training core; personalized workout plans based on the user’s goals
+PolyHomie 	High-quality training experiences at home or in the gym
+PolyDiet 	Structured diet plans and accurate daily calorie tracking
+PolyBooking 	Session booking with coaches and specialists
+PolySocial 	A dedicated social network for connection and motivation among athletes
+PolyGroupie 	Group workouts and classes
+PolyChallenge 	In-app challenges and competitions with a gamification approach
+PolyProgress 	Tracking body progress and athletic records
+PolyAnalysis 	Intelligent analysis of injury risks and nutritional hazards
+PolyShop 	A sports supplements and equipment store with an integrated shopping cart
+
+    With PolyLife, excuses come to an end and transformation begins. Build your own healthy lifestyle!
+
+This repository contains the Core of the ecosystem: the shared infrastructure for all services — including authentication, the landing page, and the authentication gateway for student-team microservices. Each team builds its own service, with its own database and dedicated gateway, behind this common core.
+Architecture
+
+                                                                    text
  browser ───────────────▶ Core (Django)               http://localhost:8000
                            • React landing page (SPA)
                            • /api/register | login | user
@@ -19,67 +35,61 @@ with its **own database** and **own gateway** — behind this core.
               │
               ▼
            team backend ──▶ team's own database (with a unique password)
-```
 
-- **Auth:** username + password → JWT. The core verifies the token; teams never
-  decode JWTs — their gateway calls `/api/verify` and forwards the `X-User-*`
-  headers to the backend.
+Authentication flow: username + password → JWT.
 
-  ## Suggested flow
+The core validates the token; teams never decode the JWT themselves — each team gateway calls /api/verify and forwards the X-User-* headers to its own backend.
+Suggested Usage Flow
 
-1. **Register** — `POST /api/register` with `{"username": "ali", "password": "Sup3rSecretPass"}`.
-2. **Login** — `POST /api/login` with the same credentials. The response returns
-   `token`/`refresh` and sets an HttpOnly access cookie so browser sessions also
-   work through team gateways on ports `9101`…`9108`.
-3. **Get user** — `GET /api/user` with `Authorization: Bearer <token>`.
-4. **Refresh** — `POST /api/refresh` with `{"refresh": "<refresh>"}` → a fresh `token`.
-5. **Verify** — `GET /api/verify` with the Bearer token → check the `X-User-*` response headers (this is what a team gateway calls).
-6. **Logout** — `POST /api/logout` with the Bearer token. Afterwards the same token/refresh stop working.
+    Register — POST /api/register with body {"username": "ali", "password": "Sup3rSecretPass"}
+    Login — POST /api/login with the same credentials. The response includes token / refresh, and an HttpOnly cookie is also set so browser sessions can work through team gateways as well (ports 9101 to 9108).
+    Get User — GET /api/user with header Authorization: Bearer <token>
+    Refresh Token — POST /api/refresh with {"refresh": "<refresh>"} → returns a new token
+    Verify — GET /api/verify with Bearer token → inspect the response headers X-User-* (this is what each team gateway calls)
+    Logout — POST /api/logout with Bearer token. After that, the same token / refresh pair will no longer work.
 
+    Isolation: Each team has its own independent database with a dedicated username/password.
 
-- **Isolation:** each team has its own database with its own user/password.
+Project Structure
+Path 	Description
+polylife/ 	Django project (settings, URLs, per-team database router)
+core/ 	Core app: User model, JWT, authentication APIs, middleware, verify
+frontend/ 	React/Vite landing page (built inside Docker)
+teams/ 	8 team templates — student guide: teams/GETTING_STARTED.md
+scripts/ 	Helper scripts for starting/stopping the core and teams (windows/, bash/)
+Running with Docker — Recommended Method
 
-## Layout
-
-| Path | Description |
-|------|-------------|
-| `polylife/` | Django project (settings, urls, per-team DB router) |
-| `core/` | core app: User model, JWT, auth API, middleware, `verify` |
-| `frontend/` | React/Vite landing page (built inside Docker) |
-| `teams/` | the 8 team templates — student guide: `teams/GETTING_STARTED.md` |
-| `scripts/` | helper scripts to start/stop the core and teams (`windows/`, `bash/`) |
-
-## Run (with Docker — recommended)
-
-```powershell
+                                                                    powershell
 scripts\windows\start-core.ps1        # core      → http://localhost:8000
 scripts\windows\start-team.ps1 1      # one team  → http://localhost:9101
 scripts\windows\start-all-teams.ps1   # all 8 teams (9101..9108)
-```
-Stop: `scripts\windows\stop-core.ps1` , `scripts\windows\stop-team.ps1 1` , `scripts\windows\stop-all.ps1` (everything).
-Bash equivalents live in `scripts/bash/*.sh`.
 
-Seeded demo users: `user1/user1pass` , `user2/user2pass` , `user3/user3pass`.
+Stop:
 
-## Run the core without Docker
+                                                                    powershell
+scripts\windows\stop-core.ps1
+scripts\windows\stop-team.ps1 1
+scripts\windows\stop-all.ps1          # everything
 
-```powershell
+Bash equivalents are available in scripts/bash/*.sh.
+
+Seeded demo users: user1/user1pass, user2/user2pass, user3/user3pass
+Running the Core Without Docker
+
+                                                                    powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe manage.py migrate
 .\.venv\Scripts\python.exe manage.py runserver
-```
-(The React page only renders when built in Docker; locally you get a fallback
-page plus the fully working API.)
 
-## Tests
+    The React page is rendered only when it has been built inside Docker; in local execution, you will get a fallback page alongside a fully functional API.
 
-```powershell
+Tests
+
+                                                                    powershell
 .\.venv\Scripts\python.exe manage.py test core
-```
 
-To exercise the API by hand (Postman / curl), see [docs/API_TESTING.md](docs/API_TESTING.md).
+For manual API testing with Postman / curl, see docs/API_TESTING.md.
+Configuration
 
-## Configuration
-
-For local settings, copy `.env.example` to `.env`. No secret is ever committed.
+For local settings, copy .env.example to .env. No secrets are committed.
